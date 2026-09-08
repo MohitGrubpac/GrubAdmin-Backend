@@ -1,6 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { Hono } from "hono";
-import { hospitalityRouter } from "@/modules/hospitality";
 import { isAuthOrSensitiveAccountPath } from "@/modules/hospitality/middlewares/hospitality-auth-no-store";
 import { extractPasswordFromUser } from "@/modules/hospitality/utils/sanitize-user";
 import { isHospitalityOtpDevLogEnabled } from "@/modules/hospitality/handlers/auth/auth.utils";
@@ -8,7 +7,32 @@ import {
 	HOSPITALITY_AUTH_COOKIE_NAME,
 } from "@/modules/hospitality/utils/hospitality-auth-cookie";
 
+const mockClientFindFirst = mock(() => Promise.resolve(null));
+
+mock.module("@/db", () => ({
+	prisma: {
+		client: {
+			findFirst: mockClientFindFirst,
+		},
+	},
+	isPrismaConnected: () => true,
+	isMongoConnected: () => false,
+	isDatabaseReady: () => true,
+	getMongoConnectionState: () => "disconnected",
+	connectMongoDB: mock(() => Promise.resolve()),
+	ensureMongoDB: mock(() => Promise.resolve()),
+	waitForDatabases: mock(() => Promise.resolve({ prisma: true, mongodb: false })),
+	initializeDatabases: mock(() => Promise.resolve()),
+}));
+
+const { hospitalityRouter } = await import("@/modules/hospitality");
+
 describe("Hospitality security — auth no-store paths", () => {
+	beforeEach(() => {
+		mockClientFindFirst.mockReset();
+		mockClientFindFirst.mockResolvedValue(null);
+	});
+
 	test("flags auth and account mutation paths", () => {
 		expect(isAuthOrSensitiveAccountPath("POST", "/auth/login")).toBe(true);
 		expect(isAuthOrSensitiveAccountPath("POST", "/auth/verify-otp")).toBe(true);
