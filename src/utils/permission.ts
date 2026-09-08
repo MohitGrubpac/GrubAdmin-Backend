@@ -3,6 +3,14 @@ import type {
 	PermissionAllowed,
 	TopicKey,
 } from "@/types/common/permissions-set.ts";
+import {
+	BOX_VERTICALS,
+	CAMPING_VERTICAL_NAME,
+	DELIVERY_VERTICAL_NAME,
+	HOSPITALITY_VERTICAL_NAME,
+	MEDICAL_VERTICAL_NAME,
+} from "@/configs/constants.ts";
+import type { BoxType } from "@/types/common/box-type.ts";
 import { APIError } from "@/types/error";
 
 interface CheckAdminPermissionArgs {
@@ -16,7 +24,55 @@ interface PermsResponse {
 	is_super_admin?: boolean;
 }
 
+/** Admin roles store most topics as string[]; `verticals` is often a keyed object from seed-roles. */
+export const normalizePermissionTopicValues = (value: unknown): string[] => {
+	if (Array.isArray(value)) {
+		return value.map((entry) => String(entry).trim()).filter(Boolean);
+	}
+	if (value && typeof value === "object") {
+		return Object.values(value as Record<string, unknown>)
+			.map((entry) => String(entry).trim())
+			.filter(Boolean);
+	}
+	return [];
+};
+
+const normalizeRolePermissions = (
+	raw: Record<string, unknown> | null | undefined,
+): Record<string, string[]> => {
+	if (!raw || typeof raw !== "object") {
+		return {};
+	}
+	const normalized: Record<string, string[]> = {};
+	for (const [topic, value] of Object.entries(raw)) {
+		normalized[topic] = normalizePermissionTopicValues(value);
+	}
+	return normalized;
+};
+
+const VERTICAL_DB_NAMES: Record<BoxType, string> = {
+	delivery: DELIVERY_VERTICAL_NAME,
+	medical: MEDICAL_VERTICAL_NAME,
+	hospitality: HOSPITALITY_VERTICAL_NAME,
+	camping: CAMPING_VERTICAL_NAME,
+};
+
 export class Permission {
+	static getAllowedVerticalNames(
+		perms: Record<string, string[]>,
+	): BoxType[] {
+		const granted = new Set(
+			(perms.verticals ?? []).map((value) => value.toLowerCase().trim()),
+		);
+		return BOX_VERTICALS.filter((vertical) => granted.has(vertical));
+	}
+
+	static getAllowedVerticalDbNames(perms: Record<string, string[]>): string[] {
+		return Permission.getAllowedVerticalNames(perms).map(
+			(vertical) => VERTICAL_DB_NAMES[vertical],
+		);
+	}
+
 	static checkAdminPermissions(
 		args: CheckAdminPermissionArgs,
 	): PermsResponse {
@@ -24,10 +80,9 @@ export class Permission {
 			throw new APIError("Unauthorized access", undefined, undefined, 401);
 		}
 
-		const rolesPermissions: Record<string, string[]> | undefined = args
-			.admin.role?.permissions_json
-			? (args.admin.role?.permissions_json as Record<string, string[]>)
-			: {};
+		const rolesPermissions = normalizeRolePermissions(
+			args.admin.role?.permissions_json as Record<string, unknown> | null,
+		);
 
 		if (args.admin.role?.is_super_admin) {
 			return {
@@ -36,18 +91,18 @@ export class Permission {
 			};
 		}
 
-		if (args.is_super_admin && !args.admin.role?.is_super_admin) {
+		if (Object.keys(rolesPermissions).length === 0) {
 			throw new APIError(
-				"This resource can only accessed by super admins",
+				`You do not have enough permissions to perform the intended action`,
 				undefined,
 				undefined,
 				403,
 			);
 		}
 
-		if (!rolesPermissions) {
+		if (args.is_super_admin && !args.admin.role?.is_super_admin) {
 			throw new APIError(
-				`You do not have enough permissions to perform the intended action`,
+				"This resource can only accessed by super admins",
 				undefined,
 				undefined,
 				403,
@@ -64,7 +119,7 @@ export class Permission {
 				);
 			}
 
-			const myPerms = new Set(rolesPermissions[permission]);
+			const myPerms = new Set(rolesPermissions[permission] ?? []);
 			const requiredPerms =
 				args.permissions_allowed[permission as TopicKey];
 
