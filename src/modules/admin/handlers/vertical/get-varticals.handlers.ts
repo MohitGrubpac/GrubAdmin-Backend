@@ -5,6 +5,7 @@ import type { vertical } from "@/db/types";
 import { getVerticals } from "@/db/actions/vertical.actions.ts";
 import { BOX_VERTICALS, VERTICALS_PERMISSIONS } from "@/configs/constants";
 import { Permission } from "@/utils/permission.ts";
+import type { BoxType } from "@/types/common/box-type.ts";
 
 interface ResponseData {
 	verticals: vertical[];
@@ -30,10 +31,10 @@ export const getVerticalsHandler = createHandlers(
 
 		if (!perms.is_super_admin) {
 			const verticalsAllowed = new Set(
-				(perms.perm["verticals"] || []).map((v) => v.toLowerCase()),
+				Permission.getAllowedVerticalNames(perms.perm),
 			);
 			verticals = verticals.filter((v) =>
-				verticalsAllowed.has(v.name.toLowerCase()),
+				verticalsAllowed.has(v.name.toLowerCase() as BoxType),
 			);
 		}
 

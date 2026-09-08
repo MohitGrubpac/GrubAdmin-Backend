@@ -473,6 +473,7 @@ interface GetBoxesArgs {
 	query?: string;
 	verticals?: string[];
 	state?: "assigned" | "unassigned";
+	client_id?: string;
 	pageNumber?: number;
 	pageSize?: number;
 	fetchAll?: boolean;
@@ -487,7 +488,7 @@ interface GetBoxesResponse {
 export const getBoxes = async (
 	args: GetBoxesArgs,
 ): Promise<GetBoxesResponse> => {
-	const { fetchAll, pageSize, pageNumber, state, verticals, query, ids } =
+	const { fetchAll, pageSize, pageNumber, state, verticals, query, ids, client_id } =
 		args;
 
 	const boxesQueryArgs: Prisma.boxFindManyArgs = {
@@ -521,13 +522,15 @@ export const getBoxes = async (
 			vertical_id: {
 				in: verticals,
 			},
-			client_id: state
-				? state === "assigned"
-					? {
-						not: null,
-					}
-					: null
-				: undefined,
+			client_id: client_id
+				? client_id
+				: state
+					? state === "assigned"
+						? {
+							not: null,
+						}
+						: null
+					: undefined,
 		},
 		skip:
 			!fetchAll && pageNumber && pageSize
