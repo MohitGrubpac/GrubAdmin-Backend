@@ -1,7 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { validatorErrorHandler } from "@/utils/zod.ts";
-import { BOX_VERTICALS, PAGE_SIZE } from "@/configs/constants.ts";
+import { BOX_VERTICALS, LONG_PAGE_SIZE, PAGE_SIZE } from "@/configs/constants.ts";
 
 export const createBoxRequestBodyValidator = zValidator(
 	"json",
@@ -148,7 +148,8 @@ export const getBoxesRequestQueryValidator = zValidator(
 		page_size: z.coerce
 			.number("Please provide a page size")
 			.int("Page size must an integer")
-			.nonnegative("Page size cannot be negative")
+			.min(1, "Page size must be at least 1")
+			.max(LONG_PAGE_SIZE, `page_size must be less than or equal to ${LONG_PAGE_SIZE}`)
 			.default(PAGE_SIZE),
 		state: z
 			.union(
@@ -162,6 +163,7 @@ export const getBoxesRequestQueryValidator = zValidator(
 				z.ulid("Please provide a valid ids").array(),
 			])
 			.optional(),
+		client_id: z.ulid("Please provide a valid client id").optional(),
 	}),
 	(response) => {
 		if (!response.success) {
