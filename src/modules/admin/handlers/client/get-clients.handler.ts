@@ -6,8 +6,7 @@ import type { APIResponse } from "@/types/api";
 import { calculatePagination } from "@/utils/pagination.ts";
 import type { client } from "@/db/types";
 import { Permission } from "@/utils/permission.ts";
-import { CLIENTS_PERMISSIONS } from "@/configs/constants.ts";
-import type { BoxType } from "@/types/common/box-type.ts";
+import { CLIENTS_PERMISSIONS, BOX_VERTICALS } from "@/configs/constants.ts";
 
 interface ResponseData {
 	customers: client[];
@@ -31,10 +30,6 @@ export const getClientsHandler = createHandlers(
 			},
 		});
 
-		const verticalsAllowed: BoxType[] | undefined = !perms.is_super_admin
-			? (perms.perm["verticals"] as BoxType[])
-			: undefined;
-
 		const clientsData = await getClients({
 			query,
 			order,
@@ -45,7 +40,9 @@ export const getClientsHandler = createHandlers(
 				? typeof filter === "string"
 					? [filter]
 					: filter
-				: verticalsAllowed,
+				: !perms.is_super_admin
+					? (Permission.getAllowedVerticalDbNames(perms.perm) as typeof BOX_VERTICALS[number][])
+					: undefined,
 			omit: {
 				password: true,
 			},

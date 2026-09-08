@@ -4,8 +4,7 @@ import { exportClientRequestQueryValidator } from "@/modules/admin/validators/cl
 import { getClients } from "@/db/actions/client.actions.ts";
 import { json2csv } from "json-2-csv";
 import { Permission } from "@/utils/permission.ts";
-import { CLIENTS_PERMISSIONS } from "@/configs/constants.ts";
-import type { BoxType } from "@/types/common/box-type.ts";
+import { CLIENTS_PERMISSIONS, BOX_VERTICALS } from "@/configs/constants.ts";
 import { services } from "@/services";
 import { ipMiddleware } from "@/middlewares/common/ip.ts";
 import { sanitizeCsvValue } from "@/utils/string.ts";
@@ -36,10 +35,6 @@ export const exportClientHandler = createHandlers(
 			},
 		});
 
-		const verticalsAllowed: BoxType[] | undefined = !perms.is_super_admin
-			? (perms.perm["verticals"] as BoxType[])
-			: undefined;
-
 		const exportPagination = resolveAdminExportPagination({
 			fetch_all,
 			page_number,
@@ -56,7 +51,9 @@ export const exportClientHandler = createHandlers(
 				? typeof filter === "string"
 					? [filter]
 					: filter
-				: verticalsAllowed,
+				: !perms.is_super_admin
+					? (Permission.getAllowedVerticalDbNames(perms.perm) as typeof BOX_VERTICALS[number][])
+					: undefined,
 			order,
 			orderingFactor: order_factor,
 			omit: {
