@@ -68,8 +68,9 @@ jobs:
           PM2_ID="${{ secrets.PRODUCTION_PM2_ID }}"
           echo "=== Pulling latest code ==="
           cd "$DEPLOY_PATH"
-          git stash
-          git pull origin main
+          git fetch origin main
+          git reset --hard origin/main
+          git clean -fd -e '.env*'
           ln -sf .env.production .env
           echo "=== Stopping running PM2 process ==="
           pm2 delete "$PM2_ID" || true
