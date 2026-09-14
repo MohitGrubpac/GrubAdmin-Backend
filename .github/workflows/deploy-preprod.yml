@@ -82,8 +82,9 @@ jobs:
           if [ -z "$PM2_ID" ]; then PM2_ID="grubadmin-api-preprod"; fi
           echo "=== Pulling latest code (pre-prod) ==="
           cd "$DEPLOY_PATH"
-          git stash
-          git pull origin pre-prod
+          git fetch origin pre-prod
+          git reset --hard origin/pre-prod
+          git clean -fd -e '.env*'
           ln -sf .env.production .env
           echo "=== Stopping running PM2 process ==="
           pm2 delete "$PM2_ID" || true
@@ -109,9 +110,6 @@ jobs:
           fi
           echo "=== Running db:generate ==="
           timeout 120 bun db:generate
-          echo "=== Pre-deploy data fixes ==="
-          bun run db:fix-duplicate-employee-emails
-          bun run db:fix-orphaned-box-employees
           echo "=== Killing idle database connections ==="
           bun src/cmd/kill-idle-connections.ts
           echo "=== Starting PM2 process ==="
