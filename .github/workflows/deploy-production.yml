@@ -8,6 +8,22 @@ on:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      PORT: "8000"
+      DATABASE_URL: mysql://ci:ci@127.0.0.1:3306/ci?ssl-mode=DISABLED
+      MONGO_URI: mongodb://127.0.0.1:27017/ci
+      MAIL: ci@example.com
+      MAIL_PASS: ci-dummy-pass
+      AUTH_SECRET: ci-auth-secret-minimum-32-characters
+      DELIVERY_AUTH_SECRET: ci-delivery-secret-min-32-characters
+      HOSPITALITY_AUTH_SECRET: ci-hospitality-secret-min-32-chars
+      CAMPING_AUTH_SECRET: ci-camping-secret-minimum-32-chars
+      AWS_KEY: ci-dummy-aws-key
+      AWS_SECRET: ci-dummy-aws-secret
+      AWS_REGION: ap-south-1
+      AWS_BUCKET_NAME: ci-dummy-bucket
+      ALLOWED_ORIGINS: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
 
@@ -16,6 +32,9 @@ jobs:
 
       - name: Install dependencies
         run: bun install
+
+      - name: Generate Prisma client
+        run: bun run db:generate
 
       - name: Test
         run: bun test
@@ -42,27 +61,25 @@ jobs:
 
       - name: Deploy to EC2 via PM2
         run: |
-          ssh -i ~/.ssh/id_ed25519 ${{ secrets.SSH_PRODUCTION_USER_NAME }}@${{ secrets.SSH_PRODUCTION_HOST }} 'set -e
-          export PATH="/home/ubuntu/.local/share/fnm/node-versions/v22.22.3/installation/bin:/home/ubuntu/.bun/bin:$PATH"
+          ssh -o ServerAliveInterval=15 -o ServerAliveCountMax=20 -o ConnectTimeout=30 \
+            -i ~/.ssh/id_ed25519 ${{ secrets.SSH_PRODUCTION_USER_NAME }}@${{ secrets.SSH_PRODUCTION_HOST }} 'set -e
+          export PATH="/home/ubuntu/.local/share/fnm/node-versions/v22.23.2/installation/bin:/home/ubuntu/.bun/bin:$PATH"
+          DEPLOY_PATH="$HOME/grubadmin-backend/GrubAdmin-Backend"
+          PM2_ID="${{ secrets.PRODUCTION_PM2_ID }}"
           echo "=== Pulling latest code ==="
-          cd ~/grubadmin-backend/GrubAdmin-Backend
+          cd "$DEPLOY_PATH"
           git fetch origin main
           git reset --hard origin/main
           git clean -fd -e '.env*'
+          ln -sf .env.production .env
           echo "=== Stopping running PM2 process ==="
-          pm2 delete "${{ secrets.PRODUCTION_PM2_ID }}" || true
+          pm2 delete "$PM2_ID" || true
           echo "=== Installing dependencies ==="
           bun install
-          echo "=== Killing idle database connections ==="
           set -o allexport
-          . .env.production 2>/dev/null || true
+          . .env.production
           set +o allexport
-          export AIVEN_ADMIN_PASSWORD="${{ secrets.AIVEN_ADMIN_PASSWORD }}"
-          bun src/cmd/kill-idle-connections.ts || true
           echo "=== Running database migrations ==="
-          bun run db:fix-duplicate-employee-emails
-          bun run db:fix-orphaned-box-employees
-          sleep 3
           success=false
           for i in 1 2 3; do
             echo "Attempt $i: prisma migrate deploy..."
@@ -79,9 +96,13 @@ jobs:
           fi
           echo "=== Running db:generate ==="
           timeout 120 bun db:generate
+          echo "=== Pre-deploy data fixes ==="
+          bun run db:fix-duplicate-employee-emails
+          bun run db:fix-orphaned-box-employees
+          echo "=== Killing idle database connections ==="
+          bun src/cmd/kill-idle-connections.ts
           echo "=== Starting PM2 process ==="
-          cd ~/grubadmin-backend/GrubAdmin-Backend
-          pm2 start bun --name "${{ secrets.PRODUCTION_PM2_ID }}" --kill-timeout 15000 -- start
+          pm2 start /home/ubuntu/.bun/bin/bun --name "$PM2_ID" --cwd "$DEPLOY_PATH" --kill-timeout 15000 -- start
           pm2 save
           pm2 list
           echo "=== Readiness check ==="

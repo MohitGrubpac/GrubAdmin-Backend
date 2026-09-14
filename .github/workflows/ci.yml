@@ -11,6 +11,22 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      PORT: "8000"
+      DATABASE_URL: mysql://ci:ci@127.0.0.1:3306/ci?ssl-mode=DISABLED
+      MONGO_URI: mongodb://127.0.0.1:27017/ci
+      MAIL: ci@example.com
+      MAIL_PASS: ci-dummy-pass
+      AUTH_SECRET: ci-auth-secret-minimum-32-characters
+      DELIVERY_AUTH_SECRET: ci-delivery-secret-min-32-characters
+      HOSPITALITY_AUTH_SECRET: ci-hospitality-secret-min-32-chars
+      CAMPING_AUTH_SECRET: ci-camping-secret-minimum-32-chars
+      AWS_KEY: ci-dummy-aws-key
+      AWS_SECRET: ci-dummy-aws-secret
+      AWS_REGION: ap-south-1
+      AWS_BUCKET_NAME: ci-dummy-bucket
+      ALLOWED_ORIGINS: http://localhost:3000
     steps:
       - uses: actions/checkout@v4
 
@@ -19,6 +35,9 @@ jobs:
 
       - name: Install dependencies
         run: bun install
+
+      - name: Generate Prisma client
+        run: bun run db:generate
 
       - name: Test
         run: bun test

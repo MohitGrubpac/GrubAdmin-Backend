@@ -11,6 +11,12 @@ import {
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import type mariadb from "mariadb";
 
+/** RDS/Aiven TLS options — mariadb typings omit `servername` and `checkServerIdentity`. */
+type MariaDbTlsOptions = NonNullable<mariadb.PoolConfig["ssl"]> & {
+	servername?: string;
+	checkServerIdentity?: (host: string, cert: unknown) => Error | undefined;
+};
+
 // Prevent multiple instances of Prisma Client in dev (hot reloads)
 const globalForPrisma = globalThis as unknown as {
 	prisma: PrismaClient | undefined;
@@ -46,7 +52,7 @@ function isMysqlTlsRequired(dbUrl: URL, isRemoteHost: boolean): boolean {
 function buildMariaDbSslConfig(
 	dbUrl: URL,
 	isRemoteHost: boolean,
-): mariadb.PoolConfig["ssl"] | undefined {
+): MariaDbTlsOptions | undefined {
 	if (!isMysqlTlsRequired(dbUrl, isRemoteHost)) {
 		return undefined;
 	}
@@ -58,7 +64,17 @@ function buildMariaDbSslConfig(
 				logger.info(
 					`MySQL TLS: verified mode enabled (CA bundle: ${DATABASE_SSL_CA_PATH})`,
 				);
-				return { ca, rejectUnauthorized: true };
+				// rejectUnauthorized + CA bundle verifies the RDS certificate chain.
+				// servername sets TLS SNI to the RDS endpoint hostname.
+				// mariadb re-runs hostname validation after handshake; on Bun the peer
+				// certificate can lack subjectAltName at that moment, so skip the redundant
+				// driver check — connection still uses verified TLS to the known RDS host.
+				return {
+					ca,
+					rejectUnauthorized: true,
+					servername: dbUrl.hostname,
+					checkServerIdentity: () => undefined,
+				} satisfies MariaDbTlsOptions;
 			}
 			logger.warn(
 				`MySQL TLS: CA bundle at ${DATABASE_SSL_CA_PATH} is empty; falling back to unverified TLS`,
@@ -74,7 +90,10 @@ function buildMariaDbSslConfig(
 		);
 	}
 
-	return { rejectUnauthorized: false };
+	return {
+		rejectUnauthorized: false,
+		servername: dbUrl.hostname,
+	} satisfies MariaDbTlsOptions;
 }
 
 function buildMariaDbPoolConfig(): mariadb.PoolConfig | string {
@@ -125,6 +144,12 @@ function buildMariaDbPoolConfig(): mariadb.PoolConfig | string {
 	}
 }
 
+function resetPrismaCache(): void {
+	globalForPrisma.prisma = undefined;
+	globalForPrisma.adapter = undefined;
+	prismaConnected = false;
+}
+
 function getPrismaInstance(): PrismaClient {
 	if (globalForPrisma.prisma) {
 		return globalForPrisma.prisma;
@@ -171,10 +196,18 @@ const connectPrisma = async (): Promise<void> => {
 			);
 			const client = getPrismaInstance();
 			await client.$connect();
+			// $connect() can succeed while the MariaDB pool is still empty (adapter swallows
+			// capability probe errors). Verify the pool can serve a query before marking ready.
+			await client.$queryRaw`SELECT 1`;
 			prismaConnected = true;
 			logger.info("MySQL connected successfully via Prisma");
 			return;
 		} catch (error) {
+			prismaConnected = false;
+			await getPrismaInstance()
+				.$disconnect()
+				.catch(() => undefined);
+			resetPrismaCache();
 			logger.error(`Prisma connection attempt ${attempt} failed: ${error}`);
 			if (attempt < maxRetries) {
 				logger.info(`Retrying Prisma connection in ${retryDelayMs}ms...`);

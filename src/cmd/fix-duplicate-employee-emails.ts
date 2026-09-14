@@ -2,10 +2,13 @@ import { prisma } from "../db/index.ts";
 
 async function main() {
 	console.log("Checking for duplicate employee emails...");
-	try {
-		await prisma.vertical_delivery_employee.findFirst({ take: 1 });
-	} catch {
-		console.log("Table 'vertical_delivery_employee' does not exist. Skipping.");
+	const tableRows = await prisma.$queryRaw<Array<{ cnt: bigint }>>`
+		SELECT COUNT(*) AS cnt FROM information_schema.tables
+		WHERE table_schema = DATABASE() AND table_name = 'vertical_delivery_employee'
+	`;
+	if (!tableRows[0]?.cnt || Number(tableRows[0].cnt) === 0) {
+		console.log("Table vertical_delivery_employee not present yet. Skipping.");
+		await prisma.$disconnect();
 		return;
 	}
 
@@ -17,7 +20,7 @@ async function main() {
 		});
 
 		if (duplicates.length === 0) {
-			console.log("No duplicate employee emails found. Safe to migrate!");
+			console.log("No duplicate employee emails found.");
 			return;
 		}
 
