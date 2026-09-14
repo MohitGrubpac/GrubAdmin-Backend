@@ -110,9 +110,6 @@ jobs:
           fi
           echo "=== Running db:generate ==="
           timeout 120 bun db:generate
-          echo "=== Pre-deploy data fixes ==="
-          bun run db:fix-duplicate-employee-emails
-          bun run db:fix-orphaned-box-employees
           echo "=== Killing idle database connections ==="
           bun src/cmd/kill-idle-connections.ts
           echo "=== Starting PM2 process ==="
