@@ -62,8 +62,9 @@ jobs:
           if [ -z "$PM2_ID" ]; then PM2_ID="grubadmin-api-preprod"; fi
           echo "=== Pulling latest code (pre-prod) ==="
           cd "$DEPLOY_PATH"
-          git stash
-          git pull origin pre-prod
+          git fetch origin pre-prod
+          git reset --hard origin/pre-prod
+          git clean -fd -e '.env*'
           echo "=== Stopping running PM2 process ==="
           pm2 delete "$PM2_ID" || true
           echo "=== Installing dependencies ==="

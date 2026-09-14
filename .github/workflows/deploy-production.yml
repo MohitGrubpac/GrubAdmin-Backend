@@ -46,8 +46,9 @@ jobs:
           export PATH="/home/ubuntu/.local/share/fnm/node-versions/v22.22.3/installation/bin:/home/ubuntu/.bun/bin:$PATH"
           echo "=== Pulling latest code ==="
           cd ~/grubadmin-backend/GrubAdmin-Backend
-          git stash
-          git pull origin main
+          git fetch origin main
+          git reset --hard origin/main
+          git clean -fd -e '.env*'
           echo "=== Stopping running PM2 process ==="
           pm2 delete "${{ secrets.PRODUCTION_PM2_ID }}" || true
           echo "=== Installing dependencies ==="
