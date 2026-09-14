@@ -87,8 +87,9 @@ jobs:
 
           echo "=== Pulling latest code ==="
           cd "$DEPLOY_PATH"
-          git stash
-          git pull origin main
+          git fetch origin main
+          git reset --hard origin/main
+          git clean -fd -e '.env*'
           ln -sf .env.production .env
 
           echo "=== Installing dependencies ==="
@@ -115,11 +116,6 @@ jobs:
 
           echo "=== Running db:generate ==="
           timeout 120 bun db:generate
-
-          echo "=== Pre-deploy data fixes ==="
-          bun run db:fix-duplicate-employee-emails
-          bun run db:fix-orphaned-box-employees
-
           echo "=== Killing idle database connections ==="
           bun src/cmd/kill-idle-connections.ts
 
