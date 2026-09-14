@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: backend-prod-ec2-deploy
+  cancel-in-progress: false
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -59,26 +63,41 @@ jobs:
         run: |
           ssh-keyscan -t ed25519 -H ${{ secrets.SSH_PRODUCTION_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to EC2 via PM2
+      - name: Blue-green deploy to EC2 (production backend)
         run: |
           ssh -o ServerAliveInterval=15 -o ServerAliveCountMax=20 -o ConnectTimeout=30 \
             -i ~/.ssh/id_ed25519 ${{ secrets.SSH_PRODUCTION_USER_NAME }}@${{ secrets.SSH_PRODUCTION_HOST }} 'set -e
           export PATH="/home/ubuntu/.local/share/fnm/node-versions/v22.23.2/installation/bin:/home/ubuntu/.bun/bin:$PATH"
           DEPLOY_PATH="$HOME/grubadmin-backend/GrubAdmin-Backend"
-          PM2_ID="${{ secrets.PRODUCTION_PM2_ID }}"
+          BG_SCRIPT="/home/ubuntu/scripts/bluegreen-prod-backend.sh"
+          BUN_BIN="/home/ubuntu/.bun/bin/bun"
+
+          if [ ! -x "$BG_SCRIPT" ]; then
+            echo "Blue-green script missing at $BG_SCRIPT — run EC2 init (Step 4 bootstrap) first"
+            exit 1
+          fi
+
+          INACTIVE_COLOR="$("$BG_SCRIPT" inactive-color)"
+          INACTIVE_PORT="$("$BG_SCRIPT" inactive-port)"
+          INACTIVE_PM2="$("$BG_SCRIPT" inactive-pm2)"
+          ACTIVE_PM2="$("$BG_SCRIPT" active-pm2)"
+
+          echo "=== Blue-green deploy: candidate=${INACTIVE_COLOR} port=${INACTIVE_PORT} pm2=${INACTIVE_PM2} ==="
+          echo "=== Active slot (serving traffic until cutover): pm2=${ACTIVE_PM2} ==="
+
           echo "=== Pulling latest code ==="
           cd "$DEPLOY_PATH"
           git fetch origin main
           git reset --hard origin/main
           git clean -fd -e '.env*'
           ln -sf .env.production .env
-          echo "=== Stopping running PM2 process ==="
-          pm2 delete "$PM2_ID" || true
+
           echo "=== Installing dependencies ==="
           bun install
           set -o allexport
           . .env.production
           set +o allexport
+
           echo "=== Running database migrations ==="
           success=false
           for i in 1 2 3; do
@@ -94,29 +113,51 @@ jobs:
             echo "prisma migrate deploy failed after 3 attempts"
             exit 1
           fi
+
           echo "=== Running db:generate ==="
           timeout 120 bun db:generate
           echo "=== Killing idle database connections ==="
           bun src/cmd/kill-idle-connections.ts
-          echo "=== Starting PM2 process ==="
-          pm2 start /home/ubuntu/.bun/bin/bun --name "$PM2_ID" --cwd "$DEPLOY_PATH" --kill-timeout 15000 -- start
-          pm2 save
-          pm2 list
-          echo "=== Readiness check ==="
-          ready=false
-          for i in 1 2 3 4 5 6 7 8 9 10; do
-            if curl -sf http://127.0.0.1:8000/api/v1/common/readyz >/dev/null; then
-              ready=true
-              break
-            fi
-            echo "waiting for readyz (attempt $i)..."
-            sleep 3
-          done
-          if [ "$ready" != "true" ]; then
-            echo "readyz check failed after PM2 start"
+
+          echo "=== Starting candidate PM2 on inactive port ==="
+          pm2 delete "$INACTIVE_PM2" || true
+          PORT="$INACTIVE_PORT" pm2 start "$BUN_BIN" --name "$INACTIVE_PM2" --cwd "$DEPLOY_PATH" --kill-timeout 15000 --update-env -- start
+
+          echo "=== Readiness check on candidate (before cutover) ==="
+          if ! "$BG_SCRIPT" wait-readyz "$INACTIVE_PORT" 10; then
+            echo "Candidate readyz failed — stopping candidate; active slot unchanged"
+            pm2 delete "$INACTIVE_PM2" || true
             exit 1
           fi
-          echo "=== Deployment complete ==="'
+
+          echo "=== nginx cutover to candidate ==="
+          if ! "$BG_SCRIPT" cutover "$INACTIVE_COLOR"; then
+            echo "Cutover failed — stopping candidate; rollback nginx if needed via: $BG_SCRIPT rollback"
+            pm2 delete "$INACTIVE_PM2" || true
+            "$BG_SCRIPT" rollback || true
+            exit 1
+          fi
+
+          echo "=== Keep previous slot as warm standby (instant rollback) ==="
+          echo "Previous active remains online: pm2=${ACTIVE_PM2} (do not delete)"
+          if ! "$BG_SCRIPT" wait-readyz "$("$BG_SCRIPT" active-port)" 5; then
+            echo "WARN: new active readyz soft-fail after cutover — check manually"
+          fi
+          # Ensure previous color still answers locally (warm standby)
+          PREV_PORT="$("$BG_SCRIPT" inactive-port)"
+          if ! "$BG_SCRIPT" wait-readyz "$PREV_PORT" 5; then
+            echo "WARN: warm standby on port ${PREV_PORT} not healthy — rollback still needs manual restart"
+          fi
+          pm2 save
+          pm2 list
+
+          echo "=== Public readyz smoke (via nginx) ==="
+          curl -sfk "https://127.0.0.1/readyz" -H "Host: 43.204.34.10.nip.io" >/dev/null || {
+            echo "WARN: local nginx readyz check failed — verify manually"
+          }
+
+          "$BG_SCRIPT" status
+          echo "=== Blue-green production deployment complete (dual-slot warm standby) ==="'
 
       - name: Done
-        run: echo "Backend deployed successfully to production"
+        run: echo "Backend blue-green deployed successfully to production"
