@@ -92,6 +92,14 @@ export const CLIENT_DASHBOARD_URL = process.env.CLIENT_DASHBOARD_URL as string;
 export const GOOGLE_MAPS_API_KEY = process.env.GOOGLE_MAPS_API_KEY as string;
 export const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "").split(",").map(o => o.trim()).filter(Boolean);
 
+/** When true, allow http(s)://localhost and 127.0.0.1 origins even in production (staging-only). Default false. */
+export const CORS_ALLOW_LOCALHOST = ["true", "1"].includes(
+	(process.env.CORS_ALLOW_LOCALHOST || "").trim().toLowerCase(),
+);
+
+/** Max auth/OTP rate-limit requests per window for mobile verticals. Default 5. */
+export const MOBILE_AUTH_RATE_MAX = parseInt(process.env.MOBILE_AUTH_RATE_MAX || "5", 10);
+
 export const loadEnv = (): void => {
 	const requiredEnvVars = [
 		"PORT",

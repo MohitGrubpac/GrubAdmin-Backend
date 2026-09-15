@@ -22,6 +22,26 @@ describe("Mobile rate limits", () => {
 		expect(body.message).toContain("Too many requests");
 	});
 
+	test("general and auth limits do not share counter on same IP", async () => {
+		const limits = createMobileRateLimits("test-vertical-collision");
+		const app = new Hono();
+		app.get("/api/data", limits.general, (c) => c.json({ ok: true }));
+		app.post("/auth/login", limits.auth, (c) => c.json({ success: true }));
+
+		const headers = { "x-real-ip": "203.0.113.12" };
+
+		for (let i = 0; i < 5; i++) {
+			const res = await app.request("/auth/login", { method: "POST", headers });
+			expect(res.status).toBe(200);
+		}
+
+		const blockedAuth = await app.request("/auth/login", { method: "POST", headers });
+		expect(blockedAuth.status).toBe(429);
+
+		const generalStillOk = await app.request("/api/data", { headers });
+		expect(generalStillOk.status).toBe(200);
+	});
+
 	test("general limit is independent per vertical prefix", async () => {
 		const limitsA = createMobileRateLimits("vertical-a");
 		const limitsB = createMobileRateLimits("vertical-b");
