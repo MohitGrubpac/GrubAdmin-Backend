@@ -10,6 +10,7 @@ import {
 	confirmResetPasswordHandler,
 	resendResetPasswordOtpHandler,
 } from "./handlers/auth";
+import { ADMIN_AUTH_RATE_MAX } from "@/configs/env";
 import { rateLimit } from "@/middlewares/rate-limit";
 import { globalErrorHandler } from "@/middlewares/error";
 import { ipMiddleware } from "@/middlewares/common/ip.ts";
@@ -102,7 +103,7 @@ adminRouter.onError(globalErrorHandler);
  */
 adminRouter.post("/auth/login", ...loginHandler);
 adminRouter.post("/auth/logout", ...logoutHandler);
-const otpRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: 5 });
+const otpRateLimit = rateLimit({ windowMs: 15 * 60 * 1000, max: ADMIN_AUTH_RATE_MAX });
 adminRouter.post("/auth/send-otp", otpRateLimit, ...sendOtpHandler);
 adminRouter.post("/auth/verify-otp", otpRateLimit, ...verifyOtpHandler);
 adminRouter.post("/auth/resend-otp", otpRateLimit, ...resendOtpHandler);

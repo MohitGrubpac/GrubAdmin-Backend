@@ -19,20 +19,21 @@ const clientIp = (c: Context): string =>
  * do not bleed across apps sharing the in-memory store.
  */
 export function createDeliveryRateLimits() {
-	const keyGenerator = (c: Context) => `${VERTICAL_KEY}:${clientIp(c)}`;
+	const generalKey = (c: Context) => `${VERTICAL_KEY}:general:${clientIp(c)}`;
+	const authKey = (c: Context) => `${VERTICAL_KEY}:auth:${clientIp(c)}`;
 
 	return {
-		/** 120 requests / minute — general API traffic */
+		/** general API traffic */
 		general: rateLimit({
 			windowMs: DELIVERY_GENERAL_RATE_WINDOW_MS,
 			max: DELIVERY_GENERAL_RATE_MAX,
-			keyGenerator,
+			keyGenerator: generalKey,
 		}),
-		/** 5 requests / 15 min — auth login, OTP, password reset */
+		/** auth login, OTP, password reset */
 		auth: rateLimit({
 			windowMs: DELIVERY_AUTH_RATE_WINDOW_MS,
 			max: DELIVERY_AUTH_RATE_MAX,
-			keyGenerator,
+			keyGenerator: authKey,
 		}),
 	};
 }
