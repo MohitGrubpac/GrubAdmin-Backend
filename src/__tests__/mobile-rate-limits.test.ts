@@ -4,6 +4,7 @@ import { createMobileRateLimits } from "@/middlewares/mobile-rate-limits";
 
 describe("Mobile rate limits", () => {
 	test("auth limit returns 429 after max requests (vertical-scoped key)", async () => {
+		process.env.MOBILE_AUTH_RATE_MAX = "5";
 		const limits = createMobileRateLimits("test-vertical-auth");
 		const app = new Hono();
 		app.post("/auth/login", limits.auth, (c) => c.json({ success: true }));
@@ -23,6 +24,7 @@ describe("Mobile rate limits", () => {
 	});
 
 	test("general and auth limits do not share counter on same IP", async () => {
+		process.env.MOBILE_AUTH_RATE_MAX = "5";
 		const limits = createMobileRateLimits("test-vertical-collision");
 		const app = new Hono();
 		app.get("/api/data", limits.general, (c) => c.json({ ok: true }));
@@ -43,6 +45,7 @@ describe("Mobile rate limits", () => {
 	});
 
 	test("general limit is independent per vertical prefix", async () => {
+		process.env.MOBILE_GENERAL_RATE_MAX = "120";
 		const limitsA = createMobileRateLimits("vertical-a");
 		const limitsB = createMobileRateLimits("vertical-b");
 		const app = new Hono();
