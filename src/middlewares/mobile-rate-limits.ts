@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import { MOBILE_AUTH_RATE_MAX } from "@/configs/env";
 import { rateLimit } from "@/middlewares/rate-limit";
 
 const clientIp = (c: Context): string =>
@@ -8,17 +9,19 @@ const clientIp = (c: Context): string =>
 
 /**
  * Vertical-scoped rate limiters for mobile routers.
- * Keys include the vertical prefix so limits do not bleed across apps sharing the in-memory store.
+ * Keys include vertical + limiter kind so general/auth/OTP counters do not collide on the same IP.
  */
 export function createMobileRateLimits(verticalKey: string) {
-	const keyGenerator = (c: Context) => `${verticalKey}:${clientIp(c)}`;
+	const generalKey = (c: Context) => `${verticalKey}:general:${clientIp(c)}`;
+	const authKey = (c: Context) => `${verticalKey}:auth:${clientIp(c)}`;
+	const sensitiveOtpKey = (c: Context) => `${verticalKey}:sensitiveOtp:${clientIp(c)}`;
 
 	return {
 		/** 120 requests / minute — general API traffic */
-		general: rateLimit({ windowMs: 60_000, max: 120, keyGenerator }),
-		/** 5 requests / 15 min — auth login & OTP send/verify (matches hospitality/admin) */
-		auth: rateLimit({ windowMs: 15 * 60 * 1000, max: 5, keyGenerator }),
+		general: rateLimit({ windowMs: 60_000, max: 120, keyGenerator: generalKey }),
+		/** auth login & OTP send/verify (matches hospitality/admin; max via MOBILE_AUTH_RATE_MAX) */
+		auth: rateLimit({ windowMs: 15 * 60 * 1000, max: MOBILE_AUTH_RATE_MAX, keyGenerator: authKey }),
 		/** 10 requests / 15 min — lock OTP, account confirm, transfer verify */
-		sensitiveOtp: rateLimit({ windowMs: 15 * 60 * 1000, max: 10, keyGenerator }),
+		sensitiveOtp: rateLimit({ windowMs: 15 * 60 * 1000, max: 10, keyGenerator: sensitiveOtpKey }),
 	};
 }
