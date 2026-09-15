@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { networkLogger } from "@/middlewares/network-logger";
-import { ALLOWED_ORIGINS, FRONTEND_URL, HOSPITALITY_FRONTEND_URL, NODE_ENV, loadEnv } from "@/configs/env.ts";
+import { ALLOWED_ORIGINS, CORS_ALLOW_LOCALHOST, FRONTEND_URL, HOSPITALITY_FRONTEND_URL, NODE_ENV, loadEnv } from "@/configs/env.ts";
 import { logger } from "@/utils/logger";
 import { router } from "@/modules";
 import { connectMongoDB, initializeDatabases, isMongoConnected, isPrismaConnected, isDatabaseReady } from "./db";
@@ -71,6 +71,13 @@ server.use(
             }
 
             if (ALLOWED_ORIGINS.includes(origin)) {
+                return origin;
+            }
+
+            if (
+                CORS_ALLOW_LOCALHOST &&
+                /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+            ) {
                 return origin;
             }
 
