@@ -1,6 +1,11 @@
+import {
+	DELIVERY_AUTH_RATE_MAX as ENV_DELIVERY_AUTH_RATE_MAX,
+	DELIVERY_GENERAL_RATE_MAX as ENV_DELIVERY_GENERAL_RATE_MAX,
+} from "@/configs/env";
+
 /** Delivery portal IP throttle windows — in-memory store OK for single PM2 pilot. */
 export const DELIVERY_AUTH_RATE_WINDOW_MS = 15 * 60 * 1000;
-export const DELIVERY_AUTH_RATE_MAX = 5;
+export const DELIVERY_AUTH_RATE_MAX = ENV_DELIVERY_AUTH_RATE_MAX;
 
 export const DELIVERY_GENERAL_RATE_WINDOW_MS = 60_000;
-export const DELIVERY_GENERAL_RATE_MAX = 120;
+export const DELIVERY_GENERAL_RATE_MAX = ENV_DELIVERY_GENERAL_RATE_MAX;

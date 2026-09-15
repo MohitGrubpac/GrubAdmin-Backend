@@ -97,8 +97,17 @@ export const CORS_ALLOW_LOCALHOST = ["true", "1"].includes(
 	(process.env.CORS_ALLOW_LOCALHOST || "").trim().toLowerCase(),
 );
 
-/** Max auth/OTP rate-limit requests per window for mobile verticals. Default 5. */
-export const MOBILE_AUTH_RATE_MAX = parseInt(process.env.MOBILE_AUTH_RATE_MAX || "5", 10);
+/** Max auth/OTP rate-limit requests per 15 min window for mobile verticals. Pilot default raised for team QA. */
+export const MOBILE_AUTH_RATE_MAX = parseInt(process.env.MOBILE_AUTH_RATE_MAX || "500", 10);
+
+/** Max auth/OTP rate-limit requests per 15 min window for delivery portal. */
+export const DELIVERY_AUTH_RATE_MAX = parseInt(process.env.DELIVERY_AUTH_RATE_MAX || "500", 10);
+
+/** Max general API requests per minute for delivery portal. */
+export const DELIVERY_GENERAL_RATE_MAX = parseInt(process.env.DELIVERY_GENERAL_RATE_MAX || "500", 10);
+
+/** Max OTP/auth requests per 15 min for admin portal auth routes. */
+export const ADMIN_AUTH_RATE_MAX = parseInt(process.env.ADMIN_AUTH_RATE_MAX || "500", 10);
 
 export const loadEnv = (): void => {
 	const requiredEnvVars = [
