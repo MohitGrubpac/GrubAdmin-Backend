@@ -84,6 +84,12 @@ async function ensureBox(
 		});
 	}
 
+	await prisma.box_lock.upsert({
+		where: { box_id: box.id },
+		create: { box_id: box.id, lock_status: "unlocked" },
+		update: {},
+	});
+
 	return box;
 }
 
