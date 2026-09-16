@@ -2227,14 +2227,18 @@ export const updateBoxLockStatus = async (args: {
 			throw new APIError("No valid boxes found to update", undefined, undefined, 404);
 		}
 
-		await tx.box_lock.updateMany({
-			where: {
-				box_id: { in: validIds },
-			},
-			data: {
-				lock_status: lock_status as box_lock_status,
-			},
-		});
+		for (const boxId of validIds) {
+			await tx.box_lock.upsert({
+				where: { box_id: boxId },
+				create: {
+					box_id: boxId,
+					lock_status: lock_status as box_lock_status,
+				},
+				update: {
+					lock_status: lock_status as box_lock_status,
+				},
+			});
+		}
 
 		// Sync MongoDB BoxConfig.grublock to mirror the authoritative Prisma lock_status
 		if (lock_status === "locked" || lock_status === "unlocked") {
