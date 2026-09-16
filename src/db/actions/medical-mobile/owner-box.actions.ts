@@ -359,12 +359,12 @@ const setOwnerBoxConnectionState = async (args: {
 	connection_status: "connected" | "disconnected";
 }) => {
 	await prisma.$transaction(async (tx) => {
-		const updated = await tx.box.updateMany({
+		const box = await tx.box.findFirst({
 			where: boxWhereForOwner(args.box_id, args.client_id),
-			data: {},
+			select: { id: true },
 		});
 
-		if (updated.count === 0) {
+		if (!box) {
 			throw new APIError(undefined, "medical.box.NOT_FOUND", undefined, 404);
 		}
 
