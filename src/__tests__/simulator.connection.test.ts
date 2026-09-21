@@ -24,7 +24,7 @@ mock.module("@/db", () => ({
 	prisma: mockPrisma,
 }));
 
-const { connectSimulatorBox } = await import(
+const { buildSimulatorConnectedUser, connectSimulatorBox } = await import(
 	"@/db/actions/simulator.connection.actions.ts"
 );
 
@@ -63,10 +63,37 @@ describe("simulator connection — power off guard", () => {
 			connection_employee_id: null,
 			medical_connection_employee_id: null,
 			telemetry: { power_status: "on" },
+			vertical: { name: "Delivery" },
 		} as any);
 
 		const result = await connectSimulatorBox("box-1", "driver-1");
 
 		expect(result.ok).toBe(true);
+	});
+
+	test("buildSimulatorConnectedUser prefers medical handler when set", () => {
+		const connected = buildSimulatorConnectedUser({
+			connection_employee_id: "del-1",
+			medical_connection_employee_id: "med-1",
+			connection_employee: {
+				id: "del-1",
+				employee_display_id: "DEL-001",
+				first_name: "Delivery",
+				last_name: "Driver",
+			},
+			medical_connection_employee: {
+				id: "med-1",
+				employee_display_id: "MED-001",
+				first_name: "Medical",
+				last_name: "Handler",
+			},
+		});
+
+		expect(connected).toEqual({
+			driver_id: "med-1",
+			driver_user_id: "med-1",
+			employee_display_id: "MED-001",
+			name: "Medical Handler",
+		});
 	});
 });

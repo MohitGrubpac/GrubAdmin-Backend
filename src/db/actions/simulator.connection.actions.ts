@@ -1,6 +1,36 @@
 import { prisma } from "@/db";
 import { ulid } from "ulid";
+import { MEDICAL_VERTICAL_NAME } from "@/configs/constants";
 import { BOX_POWERED_OFF_CONNECT_MESSAGE, isBoxPoweredOff } from "@/utils/box-power.ts";
+
+const simulatorEmployeeSelect = {
+	id: true,
+	employee_display_id: true,
+	first_name: true,
+	last_name: true,
+} as const;
+
+export const simulatorBoxConnectionInclude = {
+	connection_employee: { select: simulatorEmployeeSelect },
+	medical_connection_employee: { select: simulatorEmployeeSelect },
+} as const;
+
+type SimulatorEmployeeSnapshot = {
+	id: string;
+	employee_display_id: string | null;
+	first_name: string;
+	last_name: string | null;
+};
+
+export const resolveSimulatorActiveConnectionEmployeeId = (box: {
+	medical_connection_employee_id?: string | null;
+	connection_employee_id?: string | null;
+}) => box.medical_connection_employee_id ?? box.connection_employee_id ?? null;
+
+export const isSimulatorDriverConnected = (box: {
+	medical_connection_employee_id?: string | null;
+	connection_employee_id?: string | null;
+}) => !!resolveSimulatorActiveConnectionEmployeeId(box);
 
 export const SIMULATOR_HEARTBEAT_TIMEOUT_MS = 20_000;
 
@@ -90,6 +120,7 @@ export const connectSimulatorBox = async (box_id: string, driver_id: string) => 
 			connection_employee_id: true,
 			medical_connection_employee_id: true,
 			telemetry: { select: { power_status: true } },
+			vertical: { select: { name: true } },
 		},
 	});
 
@@ -121,16 +152,22 @@ export const connectSimulatorBox = async (box_id: string, driver_id: string) => 
 		};
 	}
 
+	const isMedicalBox = box.vertical?.name === MEDICAL_VERTICAL_NAME;
+
 	await prisma.$transaction(async (tx) => {
 		await tx.box.update({
 			where: { id: box_id },
-			data: { connection_employee_id: driver_id },
+			data: isMedicalBox
+				? { medical_connection_employee_id: driver_id }
+				: { connection_employee_id: driver_id },
 		});
 
-		await tx.vertical_delivery_employee.updateMany({
-			where: { id: driver_id },
-			data: { last_connected_box_id: box_id },
-		});
+		if (!isMedicalBox) {
+			await tx.vertical_delivery_employee.updateMany({
+				where: { id: driver_id },
+				data: { last_connected_box_id: box_id },
+			});
+		}
 
 		await tx.box_telemetry_latest.upsert({
 			where: { box_id },
@@ -155,10 +192,10 @@ export const connectSimulatorBox = async (box_id: string, driver_id: string) => 
 export const disconnectSimulatorBoxOnPowerOff = async (box_id: string) => {
 	const box = await prisma.box.findUnique({
 		where: { id: box_id },
-		select: { connection_employee_id: true },
+		select: { connection_employee_id: true, medical_connection_employee_id: true },
 	});
 
-	if (!box?.connection_employee_id) {
+	if (!isSimulatorDriverConnected(box ?? {})) {
 		return;
 	}
 
@@ -168,10 +205,10 @@ export const disconnectSimulatorBoxOnPowerOff = async (box_id: string) => {
 export const enforceSimulatorHeartbeatTimeout = async (box_id: string) => {
 	const box = await prisma.box.findUnique({
 		where: { id: box_id },
-		select: { connection_employee_id: true },
+		select: { connection_employee_id: true, medical_connection_employee_id: true },
 	});
 
-	if (!box?.connection_employee_id) {
+	if (!isSimulatorDriverConnected(box ?? {})) {
 		clearSimulatorHeartbeat(box_id);
 		return;
 	}
@@ -187,25 +224,32 @@ export const runSimulatorHeartbeatSweep = async () => {
 	}
 };
 
+const toSimulatorConnectedUser = (
+	employeeId: string,
+	employee?: SimulatorEmployeeSnapshot | null,
+) => ({
+	driver_id: employeeId,
+	driver_user_id: employeeId,
+	employee_display_id: employee?.employee_display_id ?? null,
+	name: employee ? `${employee.first_name} ${employee.last_name || ""}`.trim() : null,
+});
+
 export const buildSimulatorConnectedUser = (box: {
-	connection_employee_id: string | null;
-	connection_employee?: {
-		id: string;
-		employee_display_id: string | null;
-		first_name: string;
-		last_name: string | null;
-	} | null;
+	connection_employee_id?: string | null;
+	medical_connection_employee_id?: string | null;
+	connection_employee?: SimulatorEmployeeSnapshot | null;
+	medical_connection_employee?: SimulatorEmployeeSnapshot | null;
 }) => {
+	if (box.medical_connection_employee_id) {
+		return toSimulatorConnectedUser(
+			box.medical_connection_employee_id,
+			box.medical_connection_employee,
+		);
+	}
+
 	if (!box.connection_employee_id) {
 		return null;
 	}
 
-	return {
-		driver_id: box.connection_employee_id,
-		driver_user_id: box.connection_employee_id,
-		employee_display_id: box.connection_employee?.employee_display_id ?? null,
-		name: box.connection_employee
-			? `${box.connection_employee.first_name} ${box.connection_employee.last_name || ""}`.trim()
-			: null,
-	};
+	return toSimulatorConnectedUser(box.connection_employee_id, box.connection_employee);
 };

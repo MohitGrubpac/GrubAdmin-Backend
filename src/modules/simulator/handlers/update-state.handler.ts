@@ -10,7 +10,10 @@ import {
 	buildSimulatorConnectedUser,
 	disconnectSimulatorBoxOnPowerOff,
 	enforceSimulatorHeartbeatTimeout,
+	isSimulatorDriverConnected,
 	recordSimulatorHeartbeat,
+	resolveSimulatorActiveConnectionEmployeeId,
+	simulatorBoxConnectionInclude,
 } from "@/db/actions/simulator.connection.actions.ts";
 import { computeOverallBatteryLevel } from "@/utils/box-battery.ts";
 import {
@@ -140,14 +143,7 @@ export const updateStateHandler = createHandlers(
 			include: {
 				telemetry: true,
 				lock: true,
-				connection_employee: {
-					select: {
-						id: true,
-						employee_display_id: true,
-						first_name: true,
-						last_name: true,
-					},
-				},
+				...simulatorBoxConnectionInclude,
 			},
 		});
 
@@ -175,10 +171,10 @@ export const updateStateHandler = createHandlers(
 					box_id: box.id,
 					display_id: box.box_display_id,
 					is_locked: box.lock?.lock_status === "locked",
-					driver_id: box.connection_employee_id || null,
+					driver_id: resolveSimulatorActiveConnectionEmployeeId(box),
 					connected_user,
 					restaurant_id: null,
-					is_driver_connected: !!box.connection_employee_id,
+					is_driver_connected: isSimulatorDriverConnected(box),
 					connection_status: box.telemetry?.cellular_signal || box.telemetry?.connection_status || "strong",
 					battery_1_level: box.telemetry?.battery_1_percentage ?? null,
 					battery_2_level: box.telemetry?.battery_2_percentage ?? null,

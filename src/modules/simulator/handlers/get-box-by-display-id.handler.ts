@@ -3,6 +3,12 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { validatorErrorHandler } from "@/utils/zod";
 import { prisma } from "@/db";
+import {
+	buildSimulatorConnectedUser,
+	isSimulatorDriverConnected,
+	resolveSimulatorActiveConnectionEmployeeId,
+	simulatorBoxConnectionInclude,
+} from "@/db/actions/simulator.connection.actions.ts";
 
 export const getBoxByDisplayIdHandler = createHandlers(
 	zValidator(
@@ -17,7 +23,7 @@ export const getBoxByDisplayIdHandler = createHandlers(
 
 		const box = await prisma.box.findUnique({
 			where: { box_display_id: display_id },
-			include: { telemetry: true, lock: true },
+			include: { telemetry: true, lock: true, ...simulatorBoxConnectionInclude },
 		});
 
 		if (!box) {
@@ -27,6 +33,8 @@ export const getBoxByDisplayIdHandler = createHandlers(
 			);
 		}
 
+		const connected_user = buildSimulatorConnectedUser(box);
+
 		return context.json<any>(
 			{
 				status: "success",
@@ -34,7 +42,9 @@ export const getBoxByDisplayIdHandler = createHandlers(
 					box_id: box.id,
 					display_id: box.box_display_id,
 					is_locked: box.lock?.lock_status === "locked",
-					driver_id: box.connection_employee_id || null,
+					driver_id: resolveSimulatorActiveConnectionEmployeeId(box),
+					connected_user,
+					is_driver_connected: isSimulatorDriverConnected(box),
 					restaurant_id: null,
 					settings: {
 						is_power_on: box.telemetry?.power_status === "on",
