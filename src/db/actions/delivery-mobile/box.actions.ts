@@ -24,6 +24,10 @@ import {
 	BOX_POWERED_OFF_CONNECT_MESSAGE,
 	isBoxPoweredOff,
 } from "@/utils/box-power.ts";
+import {
+	clearSimulatorHeartbeat,
+	recordSimulatorHeartbeat,
+} from "@/db/actions/simulator.connection.actions.ts";
 import { SEARCH_PAGE_SIZE } from "@/validators/pagination.ts";
 
 const MAX_LOCK_OTP_ATTEMPTS = 3;
@@ -566,6 +570,7 @@ export const connectDriverBox = async (args: {
 		box.telemetry?.connection_status === "connected";
 
 	if (alreadyConnected) {
+		recordSimulatorHeartbeat(box.id);
 		return {
 			id: box.id,
 			box_display_id: box.box_display_id,
@@ -579,6 +584,8 @@ export const connectDriverBox = async (args: {
 		employee_id: args.employee_id,
 		connection_status: "connected",
 	});
+
+	recordSimulatorHeartbeat(box.id);
 
 	return {
 		id: box.id,
@@ -604,6 +611,8 @@ export const disconnectDriverBox = async (args: {
 		employee_id: null,
 		connection_status: "disconnected",
 	});
+
+	clearSimulatorHeartbeat(box.id);
 
 	return {
 		id: box.id,
