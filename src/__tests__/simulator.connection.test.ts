@@ -24,9 +24,15 @@ mock.module("@/db", () => ({
 	prisma: mockPrisma,
 }));
 
-const { buildSimulatorConnectedUser, connectSimulatorBox } = await import(
-	"@/db/actions/simulator.connection.actions.ts"
-);
+const {
+	SIMULATOR_HEARTBEAT_TIMEOUT_MS,
+	buildSimulatorConnectedUser,
+	clearSimulatorHeartbeat,
+	connectSimulatorBox,
+	enforceSimulatorHeartbeatTimeout,
+	isSimulatorHeartbeatStale,
+	recordSimulatorHeartbeat,
+} = await import("@/db/actions/simulator.connection.actions.ts");
 
 describe("simulator connection — power off guard", () => {
 	beforeEach(() => {
@@ -95,5 +101,71 @@ describe("simulator connection — power off guard", () => {
 			employee_display_id: "MED-001",
 			name: "Medical Handler",
 		});
+	});
+});
+
+describe("simulator heartbeat — medical mobile connection", () => {
+	const boxId = "box-med-heartbeat";
+
+	beforeEach(() => {
+		clearSimulatorHeartbeat(boxId);
+		mockPrisma.box.findUnique.mockReset();
+		mockPrisma.box.update.mockReset();
+		mockPrisma.$transaction.mockReset();
+		mockPrisma.$transaction.mockImplementation(async (callback: (tx: typeof mockPrisma) => Promise<unknown>) =>
+			callback(mockPrisma),
+		);
+	});
+
+	test("stale heartbeat disconnects medical_connection_employee_id", async () => {
+		const realDateNow = Date.now;
+		let fakeNow = 1_000_000;
+		Date.now = () => fakeNow;
+
+		try {
+			recordSimulatorHeartbeat(boxId);
+			fakeNow += SIMULATOR_HEARTBEAT_TIMEOUT_MS + 1;
+
+			mockPrisma.box.findUnique
+				.mockResolvedValueOnce({
+					connection_employee_id: null,
+					medical_connection_employee_id: "handler-1",
+				} as any)
+				.mockResolvedValueOnce({
+					id: boxId,
+					connection_employee_id: null,
+					medical_connection_employee_id: "handler-1",
+				} as any);
+
+			await enforceSimulatorHeartbeatTimeout(boxId);
+
+			expect(mockPrisma.box.update).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: { id: boxId },
+					data: expect.objectContaining({
+						medical_connection_employee_id: null,
+						connection_employee_id: null,
+					}),
+				}),
+			);
+		} finally {
+			Date.now = realDateNow;
+			clearSimulatorHeartbeat(boxId);
+		}
+	});
+
+	test("fresh heartbeat keeps medical handler connected through health enforce", async () => {
+		mockPrisma.box.findUnique.mockResolvedValue({
+			connection_employee_id: null,
+			medical_connection_employee_id: "handler-1",
+		} as any);
+
+		recordSimulatorHeartbeat(boxId);
+		expect(isSimulatorHeartbeatStale(boxId)).toBe(false);
+
+		await enforceSimulatorHeartbeatTimeout(boxId);
+
+		expect(mockPrisma.box.update).not.toHaveBeenCalled();
+		clearSimulatorHeartbeat(boxId);
 	});
 });

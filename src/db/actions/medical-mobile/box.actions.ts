@@ -25,6 +25,10 @@ import {
 	BOX_POWERED_OFF_CONNECT_MESSAGE,
 	isBoxPoweredOff,
 } from "@/utils/box-power.ts";
+import {
+	clearSimulatorHeartbeat,
+	recordSimulatorHeartbeat,
+} from "@/db/actions/simulator.connection.actions.ts";
 import { resolveBoxGpsCoords } from "@/utils/box-gps.ts";
 import { buildMedicalBoxDiagnostics } from "@/db/actions/medical-mobile/diagnostics.actions.ts";
 import { buildMedicalLocationSharePayload } from "@/db/actions/medical-mobile/location-share.actions.ts";
@@ -355,6 +359,7 @@ export const connectHandlerBox = async (args: {
 		box.telemetry?.connection_status === "connected";
 
 	if (alreadyConnected) {
+		recordSimulatorHeartbeat(box.id);
 		return {
 			id: box.id,
 			box_display_id: box.box_display_id,
@@ -368,6 +373,8 @@ export const connectHandlerBox = async (args: {
 		employee_id: args.employee_id,
 		connection_status: "connected",
 	});
+
+	recordSimulatorHeartbeat(box.id);
 
 	return {
 		id: box.id,
@@ -393,6 +400,8 @@ export const disconnectHandlerBox = async (args: {
 		employee_id: null,
 		connection_status: "disconnected",
 	});
+
+	clearSimulatorHeartbeat(box.id);
 
 	return {
 		id: box.id,
