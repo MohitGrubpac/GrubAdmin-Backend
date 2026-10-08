@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Run from repo root after sourcing slot .env.production (DATABASE_URL set).
+# Preflight (before PM2 stop): bash scripts/deploy-prisma-migrate.sh --preflight
 set -euo pipefail
 
 BASELINE_MIGRATION="0001_baseline_schema"
@@ -10,6 +11,22 @@ is_postgres_url() {
 	postgresql://* | postgres://*) return 0 ;;
 	*) return 1 ;;
 	esac
+}
+
+schema_is_postgresql() {
+	grep -q 'provider = "postgresql"' prisma/schema.prisma 2>/dev/null
+}
+
+preflight_database_url() {
+	if schema_is_postgresql && ! is_postgres_url; then
+		echo "FATAL: prisma/schema.prisma is PostgreSQL but DATABASE_URL is not postgres(ql)://."
+		echo "Set slot DATABASE_URL to the matching grubadmin_* database on grubpac-v2 before deploy (avoids P1013 and PM2 downtime)."
+		exit 1
+	fi
+	if ! schema_is_postgresql && is_postgres_url; then
+		echo "FATAL: DATABASE_URL is PostgreSQL but schema.prisma is not postgresql provider."
+		exit 1
+	fi
 }
 
 run_migrate_deploy() {
@@ -48,7 +65,18 @@ baseline_resolve_if_needed() {
 		return 0
 	fi
 
-	if ! bun prisma migrate status "${@}" 2>&1 | grep -q 'Following migration have not yet been applied'; then
+	local status_out
+	status_out="$(bun prisma migrate status "${@}" 2>&1 || true)"
+	if ! echo "$status_out" | grep -qE 'not yet been applied|have not yet been applied'; then
+		if echo "$status_out" | grep -q 'Database schema is up to date'; then
+			return 0
+		fi
+		# Phase 2 db push left tables but no migration history (P3005 on deploy).
+		if echo "$status_out" | grep -qE 'P3005|schema is not empty'; then
+			echo "=== Postgres non-empty DB without migration history — resolving baseline ==="
+			bun prisma migrate resolve --applied "$BASELINE_MIGRATION" "${@}"
+			return 0
+		fi
 		return 0
 	fi
 
@@ -56,4 +84,11 @@ baseline_resolve_if_needed() {
 	bun prisma migrate resolve --applied "$BASELINE_MIGRATION" "${@}"
 }
 
+if [ "${1:-}" = "--preflight" ]; then
+	preflight_database_url
+	echo "Preflight OK: DATABASE_URL matches schema provider"
+	exit 0
+fi
+
+preflight_database_url
 run_migrate_deploy

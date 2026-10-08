@@ -86,13 +86,15 @@ jobs:
           git reset --hard origin/staging
           git clean -fd -e '.env*'
           ln -sf .env.production .env
-          echo "=== Stopping running PM2 process ==="
-          pm2 delete "$PM2_ID" || true
           echo "=== Installing dependencies ==="
           bun install
           set -o allexport
           . .env.production
           set +o allexport
+          echo "=== Preflight DATABASE_URL vs schema (before PM2 stop) ==="
+          bash scripts/deploy-prisma-migrate.sh --preflight
+          echo "=== Stopping running PM2 process ==="
+          pm2 delete "$PM2_ID" || true
           echo "=== Running database migrations ==="
           bash scripts/deploy-prisma-migrate.sh
           echo "=== Running db:generate ==="
