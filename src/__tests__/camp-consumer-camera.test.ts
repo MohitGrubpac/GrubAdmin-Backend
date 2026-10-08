@@ -48,6 +48,9 @@ const mockS3 = {
 
 mock.module("@/db", () => ({
 	prisma: mockPrisma,
+	isPrismaConnected: () => true,
+	isPostgresDatabaseUrl: () => false,
+	waitForDatabases: async () => ({ prisma: true, mongodb: true }),
 	isMongoConnected: () => true,
 	getMongoConnectionState: () => "connected",
 }));

@@ -86,28 +86,17 @@ jobs:
           git reset --hard origin/pre-prod
           git clean -fd -e '.env*'
           ln -sf .env.production .env
-          echo "=== Stopping running PM2 process ==="
-          pm2 delete "$PM2_ID" || true
           echo "=== Installing dependencies ==="
           bun install
           set -o allexport
           . .env.production
           set +o allexport
+          echo "=== Preflight DATABASE_URL vs schema (before PM2 stop) ==="
+          bash scripts/deploy-prisma-migrate.sh --preflight
+          echo "=== Stopping running PM2 process ==="
+          pm2 delete "$PM2_ID" || true
           echo "=== Running database migrations ==="
-          success=false
-          for i in 1 2 3; do
-            echo "Attempt $i: prisma migrate deploy..."
-            if timeout 120 bun prisma migrate deploy; then
-              success=true
-              break
-            fi
-            echo "migrate deploy failed, waiting 5s before retry..."
-            sleep 5
-          done
-          if [ "$success" != "true" ]; then
-            echo "prisma migrate deploy failed after 3 attempts"
-            exit 1
-          fi
+          bash scripts/deploy-prisma-migrate.sh
           echo "=== Running db:generate ==="
           timeout 120 bun db:generate
           echo "=== Killing idle database connections ==="
