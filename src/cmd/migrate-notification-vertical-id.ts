@@ -1,4 +1,4 @@
-import { prisma } from "@/db";
+import { isPostgresDatabaseUrl, prisma } from "@/db";
 import { logger } from "@/utils/logger";
 
 /**
@@ -11,25 +11,47 @@ import { logger } from "@/utils/logger";
 export const migrateNotificationVerticalId = async (): Promise<void> => {
   logger.info("Starting notification vertical_id backfill migration...");
 
-  // Step 1: Backfill from box
-  const boxResult = await prisma.$executeRaw`
-    UPDATE notification n
-    JOIN box b ON n.box_id = b.id
-    SET n.vertical_id = b.vertical_id
-    WHERE n.vertical_id IS NULL
-      AND n.box_id IS NOT NULL
-      AND b.vertical_id IS NOT NULL
-  `;
-  logger.info(`  Backfilled ${boxResult} notifications from box vertical_id`);
+  const usePostgres = isPostgresDatabaseUrl();
+  let boxResult: number;
+  let clientResult: number;
 
-  // Step 2: Backfill remaining from client
-  const clientResult = await prisma.$executeRaw`
-    UPDATE notification n
-    JOIN client c ON n.client_id = c.id
-    SET n.vertical_id = c.vertical_id
-    WHERE n.vertical_id IS NULL
-      AND c.vertical_id IS NOT NULL
-  `;
+  if (usePostgres) {
+    boxResult = await prisma.$executeRaw`
+      UPDATE notification n
+      SET vertical_id = b.vertical_id
+      FROM box b
+      WHERE n.box_id = b.id
+        AND n.vertical_id IS NULL
+        AND n.box_id IS NOT NULL
+        AND b.vertical_id IS NOT NULL
+    `;
+    clientResult = await prisma.$executeRaw`
+      UPDATE notification n
+      SET vertical_id = c.vertical_id
+      FROM client c
+      WHERE n.client_id = c.id
+        AND n.vertical_id IS NULL
+        AND c.vertical_id IS NOT NULL
+    `;
+  } else {
+    boxResult = await prisma.$executeRaw`
+      UPDATE notification n
+      JOIN box b ON n.box_id = b.id
+      SET n.vertical_id = b.vertical_id
+      WHERE n.vertical_id IS NULL
+        AND n.box_id IS NOT NULL
+        AND b.vertical_id IS NOT NULL
+    `;
+    clientResult = await prisma.$executeRaw`
+      UPDATE notification n
+      JOIN client c ON n.client_id = c.id
+      SET n.vertical_id = c.vertical_id
+      WHERE n.vertical_id IS NULL
+        AND c.vertical_id IS NOT NULL
+    `;
+  }
+
+  logger.info(`  Backfilled ${boxResult} notifications from box vertical_id`);
   logger.info(`  Backfilled ${clientResult} notifications from client vertical_id`);
 
   const remaining = await prisma.notification.count({
