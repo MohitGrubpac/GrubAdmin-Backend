@@ -4,7 +4,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
 }
 
 model admin {
@@ -25,7 +25,7 @@ model admin {
   updated_at    DateTime         @updatedAt
   role          role?            @relation(fields: [role_id], references: [id])
 
-  @@index([role_id], map: "admin_role_id_fkey")
+  @@index([role_id], map: "admin_role_id_idx")
 }
 
 model admin_dismissed {
@@ -61,7 +61,7 @@ model icon {
   updated_at     DateTime       @updatedAt
   faq_categories faq_category[]
 
-  @@fulltext([name])
+  @@index([name])
 }
 
 model vertical {
@@ -184,14 +184,14 @@ model faq_category {
   @@unique([vertical_id, name_normalized])
   @@index([name])
   @@index([description])
-  @@index([icon_id], map: "faq_category_icon_id_fkey")
-  @@index([vertical_id], map: "faq_category_vertical_id_fkey")
+  @@index([icon_id], map: "faq_category_icon_id_idx")
+  @@index([vertical_id], map: "faq_category_vertical_id_idx")
 }
 
 model faq_question {
   id                String                         @id @default(ulid())
   question          String
-  answer            String                         @db.LongText
+  answer            String                         @db.Text
   publishing_status faq_question_publishing_status @default(draft)
   status            faq_category_status            @default(active)
   attachments       Json?
@@ -211,8 +211,8 @@ model faq_question_category {
   category    faq_category @relation(fields: [category_id], references: [id], onDelete: Cascade)
   question    faq_question @relation(fields: [question_id], references: [id], onDelete: Cascade)
 
-  @@index([category_id], map: "faq_question_category_category_id_fkey")
-  @@index([question_id], map: "faq_question_category_question_id_fkey")
+  @@index([category_id], map: "faq_question_category_category_id_idx")
+  @@index([question_id], map: "faq_question_category_question_id_idx")
 }
 
 model role {
@@ -264,12 +264,12 @@ model box {
   hospitality_employee_boxes       vertical_hospitality_employee_box[] @relation("vertical_hospitality_employee_boxes")
   camp_camera_feeds                camp_camera_feed[]
 
-  @@index([client_id], map: "box_client_id_fkey")
+  @@index([client_id], map: "box_client_id_idx")
   @@index([client_id, vertical_id, status], map: "box_client_vertical_status_idx")
-  @@index([vertical_id], map: "box_vertical_id_fkey")
-  @@index([connection_employee_id], map: "box_connection_employee_id_fkey")
-  @@index([medical_connection_employee_id], map: "box_medical_connection_employee_id_fkey")
-  @@index([hospitality_connection_employee_id], map: "box_hospitality_connection_employee_id_fkey")
+  @@index([vertical_id], map: "box_vertical_id_idx")
+  @@index([connection_employee_id], map: "box_connection_employee_id_idx")
+  @@index([medical_connection_employee_id], map: "box_medical_connection_employee_id_idx")
+  @@index([hospitality_connection_employee_id], map: "box_hospitality_connection_employee_id_idx")
 }
 
 model restaurant {
@@ -291,7 +291,7 @@ model restaurant {
   client           client?                      @relation(fields: [client_id], references: [id])
   restaurant_boxes restaurant_box[]
 
-  @@index([client_id], map: "restaurant_client_id_fkey")
+  @@index([client_id], map: "restaurant_client_id_idx")
 }
 
 model vertical_delivery_employee {
@@ -321,8 +321,8 @@ model vertical_delivery_employee {
   @@unique([client_id, email])
   @@unique([client_id, employee_display_id])
   @@unique([client_id, country_code, mobile_number]) // Optional: if mobile must be unique per client
-  @@index([client_id], map: "vertical_delivery_employee_client_id_fkey")
-  @@index([restaurant_id], map: "vertical_delivery_employee_restaurant_id_fkey")
+  @@index([client_id], map: "vertical_delivery_employee_client_id_idx")
+  @@index([restaurant_id], map: "vertical_delivery_employee_restaurant_id_idx")
   @@map("vertical_delivery_employee")
 }
 
@@ -339,8 +339,8 @@ model vertical_delivery_employee_box {
   employee    vertical_delivery_employee? @relation("vertical_delivery_employee_boxes", fields: [employee_id], references: [id], onDelete: Cascade)
 
   @@unique([employee_id, box_id])
-  @@index([box_id], map: "vertical_delivery_employee_box_box_id_fkey")
-  @@index([employee_id], map: "vertical_delivery_employee_box_employee_id_fkey")
+  @@index([box_id], map: "vertical_delivery_employee_box_box_id_idx")
+  @@index([employee_id], map: "vertical_delivery_employee_box_employee_id_idx")
   @@map("vertical_delivery_employee_box")
 }
 
@@ -354,8 +354,8 @@ model restaurant_box {
   box           box                   @relation(fields: [box_id], references: [id], onDelete: Cascade)
   restaurant    restaurant            @relation(fields: [restaurant_id], references: [id], onDelete: Cascade)
 
-  @@index([box_id], map: "restaurant_box_box_id_fkey")
-  @@index([restaurant_id], map: "restaurant_box_restaurant_id_fkey")
+  @@index([box_id], map: "restaurant_box_box_id_idx")
+  @@index([restaurant_id], map: "restaurant_box_restaurant_id_idx")
 }
 
 model vertical_delivery_employee_deleted {
@@ -425,7 +425,7 @@ model vertical_delivery_consumer {
   boxes        vertical_delivery_consumer_box[] @relation("vertical_delivery_consumer_boxes")
 
   @@unique([phone, country_code])
-  @@index([client_id], map: "vertical_delivery_consumer_client_id_fkey")
+  @@index([client_id], map: "vertical_delivery_consumer_client_id_idx")
   @@map("vertical_delivery_consumer")
 }
 
@@ -438,8 +438,8 @@ model vertical_delivery_consumer_box {
   box         box                        @relation("vertical_delivery_consumer_boxes", fields: [box_id], references: [id], onDelete: Cascade)
   consumer    vertical_delivery_consumer @relation("vertical_delivery_consumer_boxes", fields: [consumer_id], references: [id], onDelete: Cascade)
 
-  @@index([box_id], map: "vertical_delivery_consumer_box_box_id_fkey")
-  @@index([consumer_id], map: "vertical_delivery_consumer_box_consumer_id_fkey")
+  @@index([box_id], map: "vertical_delivery_consumer_box_box_id_idx")
+  @@index([consumer_id], map: "vertical_delivery_consumer_box_consumer_id_idx")
 }
 
 model box_lock {
@@ -644,7 +644,7 @@ model vertical_medical_department {
   department_boxes vertical_medical_department_box[]
 
   @@unique([client_id, name])
-  @@index([client_id], map: "vertical_medical_department_client_id_fkey")
+  @@index([client_id], map: "vertical_medical_department_client_id_idx")
   @@map("vertical_medical_department")
 }
 
@@ -659,8 +659,8 @@ model vertical_medical_department_box {
   box           box                           @relation(fields: [box_id], references: [id], onDelete: Cascade)
 
   @@unique([department_id, box_id])
-  @@index([box_id], map: "vertical_medical_department_box_box_id_fkey")
-  @@index([department_id], map: "vertical_medical_department_box_department_id_fkey")
+  @@index([box_id], map: "vertical_medical_department_box_box_id_idx")
+  @@index([department_id], map: "vertical_medical_department_box_department_id_idx")
   @@map("vertical_medical_department_box")
 }
 
@@ -689,8 +689,8 @@ model vertical_medical_employee {
   @@unique([client_id, email])
   @@unique([client_id, employee_display_id])
   @@unique([client_id, country_code, mobile_number])
-  @@index([client_id], map: "vertical_medical_employee_client_id_fkey")
-  @@index([department_id], map: "vertical_medical_employee_department_id_fkey")
+  @@index([client_id], map: "vertical_medical_employee_client_id_idx")
+  @@index([department_id], map: "vertical_medical_employee_department_id_idx")
   @@map("vertical_medical_employee")
 }
 
@@ -706,8 +706,8 @@ model vertical_medical_employee_box {
   employee    vertical_medical_employee?  @relation("vertical_medical_employee_boxes", fields: [employee_id], references: [id], onDelete: SetNull)
 
   @@unique([employee_id, box_id])
-  @@index([box_id], map: "vertical_medical_employee_box_box_id_fkey")
-  @@index([employee_id], map: "vertical_medical_employee_box_employee_id_fkey")
+  @@index([box_id], map: "vertical_medical_employee_box_box_id_idx")
+  @@index([employee_id], map: "vertical_medical_employee_box_employee_id_idx")
   @@map("vertical_medical_employee_box")
 }
 
@@ -724,7 +724,7 @@ model vertical_medical_consumer {
   boxes        vertical_medical_consumer_box[] @relation("vertical_medical_consumer_boxes")
 
   @@unique([phone, country_code])
-  @@index([client_id], map: "vertical_medical_consumer_client_id_fkey")
+  @@index([client_id], map: "vertical_medical_consumer_client_id_idx")
   @@map("vertical_medical_consumer")
 }
 
@@ -757,7 +757,7 @@ model vertical_camping_consumer {
   boxes              vertical_camping_consumer_box[] @relation("vertical_camping_consumer_boxes")
 
   @@unique([phone, country_code])
-  @@index([client_id], map: "vertical_camping_consumer_client_id_fkey")
+  @@index([client_id], map: "vertical_camping_consumer_client_id_idx")
   @@map("vertical_camping_consumer")
 }
 
@@ -934,7 +934,7 @@ model vertical_hospitality_employee {
   @@unique([client_id, email])
   @@unique([client_id, employee_display_id])
   @@unique([client_id, country_code, mobile_number])
-  @@index([client_id], map: "vertical_hospitality_employee_client_id_fkey")
+  @@index([client_id], map: "vertical_hospitality_employee_client_id_idx")
   @@map("vertical_hospitality_employee")
 }
 
@@ -951,8 +951,8 @@ model vertical_hospitality_employee_box {
   employee    vertical_hospitality_employee?     @relation("vertical_hospitality_employee_boxes", fields: [employee_id], references: [id], onDelete: SetNull)
 
   @@unique([employee_id, box_id])
-  @@index([box_id], map: "vertical_hospitality_employee_box_box_id_fkey")
-  @@index([employee_id], map: "vertical_hospitality_employee_box_employee_id_fkey")
+  @@index([box_id], map: "vertical_hospitality_employee_box_box_id_idx")
+  @@index([employee_id], map: "vertical_hospitality_employee_box_employee_id_idx")
   @@map("vertical_hospitality_employee_box")
 }
 
@@ -989,7 +989,7 @@ model vertical_hospitality_floor {
   boxes      vertical_hospitality_floor_box[]
 
   @@unique([client_id, name])
-  @@index([client_id], map: "vertical_hospitality_floor_client_id_fkey")
+  @@index([client_id], map: "vertical_hospitality_floor_client_id_idx")
   @@map("vertical_hospitality_floor")
 }
 
@@ -1006,8 +1006,8 @@ model vertical_hospitality_floor_box {
   box        box                          @relation("BoxToHospitalityFloor", fields: [box_id], references: [id], onDelete: Cascade)
 
   @@unique([floor_id, box_id])
-  @@index([box_id], map: "vertical_hospitality_floor_box_box_id_fkey")
-  @@index([floor_id], map: "vertical_hospitality_floor_box_floor_id_fkey")
+  @@index([box_id], map: "vertical_hospitality_floor_box_box_id_idx")
+  @@index([floor_id], map: "vertical_hospitality_floor_box_floor_id_idx")
   @@map("vertical_hospitality_floor_box")
 }
 

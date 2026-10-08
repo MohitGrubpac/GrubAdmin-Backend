@@ -1,0 +1,3 @@
+# PostgreSQL migrations for Grub Admin (grubpac-v2).
+# Historical MySQL migrations remain under prisma/migrations/ — do not run migrate deploy against MySQL after Phase 2.
+provider = "postgresql"
