@@ -58,6 +58,11 @@ const BATCH_SIZE = 500;
 /** MySQL-only; PG schema may come from `db push` (no `_prisma_migrations` table). */
 const MYSQL_TABLES_SKIP = new Set(["_prisma_migrations"]);
 
+/** Strip CRLF from argv (Windows → SSH can leave `\r` on flags like `--dry-run`). */
+function normalizeArgv(argv: string[]): string[] {
+	return argv.map((arg) => arg.replace(/\r/g, ""));
+}
+
 function parseSlot(argv: string[]): Slot {
 	const idx = argv.indexOf("--slot");
 	if (idx === -1 || !argv[idx + 1]) {
@@ -72,7 +77,7 @@ function parseSlot(argv: string[]): Slot {
 	return slot;
 }
 
-const argv = process.argv.slice(2);
+const argv = normalizeArgv(process.argv.slice(2));
 const slot = parseSlot(argv);
 const config = SLOT_CONFIG[slot];
 
