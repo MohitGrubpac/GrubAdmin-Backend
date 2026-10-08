@@ -1,5 +1,5 @@
 import { logger } from "@/utils/logger";
-import { connectMongoDB, prisma } from "@/db";
+import { connectMongoDB, isPostgresDatabaseUrl, prisma } from "@/db";
 import mongoose from "mongoose";
 
 const TABLES_IN_DELETE_ORDER = [
@@ -34,18 +34,25 @@ export const resetDb = async () => {
   try {
     logger.info("Starting full database reset...");
 
-    // Disable FK checks
-    await prisma.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 0");
+    const usePostgres = isPostgresDatabaseUrl();
+    if (usePostgres) {
+      for (const table of TABLES_IN_DELETE_ORDER) {
+        logger.info(`  Truncating table: ${table}`);
+        await prisma.$executeRawUnsafe(`TRUNCATE TABLE "${table}" CASCADE`);
+      }
+      logger.info("PostgreSQL tables truncated.");
+    } else {
+      await prisma.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 0");
 
-    for (const table of TABLES_IN_DELETE_ORDER) {
-      logger.info(`  Clearing table: ${table}`);
-      await prisma.$executeRawUnsafe(`DELETE FROM \`${table}\``);
+      for (const table of TABLES_IN_DELETE_ORDER) {
+        logger.info(`  Clearing table: ${table}`);
+        await prisma.$executeRawUnsafe(`DELETE FROM \`${table}\``);
+      }
+
+      await prisma.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 1");
+
+      logger.info("MySQL tables cleared.");
     }
-
-    // Re-enable FK checks
-    await prisma.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 1");
-
-    logger.info("MySQL tables cleared.");
 
     // Clear MongoDB collections
     await connectMongoDB();
@@ -58,8 +65,9 @@ export const resetDb = async () => {
 
     logger.info("Database reset complete. Ready for seeding.");
   } catch (error) {
-    // Ensure FK checks are re-enabled on error
-    await prisma.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 1").catch(() => {});
+    if (!isPostgresDatabaseUrl()) {
+      await prisma.$executeRawUnsafe("SET FOREIGN_KEY_CHECKS = 1").catch(() => {});
+    }
     logger.error(`Reset failed: ${error}`);
     process.exit(1);
   }
