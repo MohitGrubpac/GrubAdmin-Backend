@@ -1,6 +1,13 @@
 import type { APIResponse } from "@/types/api/api-response";
 import { createHandlers } from "@/utils/hono-factory";
-import { prisma, isMongoConnected, getMongoConnectionState, isPrismaConnected } from "@/db";
+import {
+	prisma,
+	isMongoConnected,
+	getMongoConnectionState,
+	isPrismaConnected,
+	isPostgresDatabaseUrl,
+} from "@/db";
+import { DATABASE_URL } from "@/configs/env";
 import mongoose from "mongoose";
 import { NODE_ENV } from "@/configs/env";
 import { logger } from "@/utils/logger";
@@ -41,14 +48,15 @@ export const readinessHandler = createHandlers(async (context) => {
 	const errors: string[] = [];
 	const warnings: string[] = [];
 
-	// Check MySQL connectivity with actual query
+	const sqlLabel = isPostgresDatabaseUrl() ? "postgres" : "mysql";
+
 	if (!isPrismaConnected()) {
-		errors.push("mysql: not connected (Prisma initialization failed)");
+		errors.push(`${sqlLabel}: not connected (Prisma initialization failed)`);
 	} else {
 		try {
 			await prisma.$queryRaw`SELECT 1`;
 		} catch (e) {
-			errors.push(`mysql: query failed — ${e}`);
+			errors.push(`${sqlLabel}: query failed — ${e}`);
 		}
 	}
 
@@ -92,7 +100,14 @@ export const healthCheckHandler = createHandlers(async (context) => {
 
 	try {
 		if (isPrismaConnected()) {
-			const sqlRes: any[] = await prisma.$queryRaw`SELECT USER() as user, DATABASE() as db, @@hostname as host`;
+			const sqlRes: any[] = isPostgresDatabaseUrl(DATABASE_URL)
+				? await prisma.$queryRaw`
+					SELECT
+						current_user AS user,
+						current_database() AS db,
+						COALESCE(inet_server_addr()::text, 'local') AS host
+				`
+				: await prisma.$queryRaw`SELECT USER() as user, DATABASE() as db, @@hostname as host`;
 			if (sqlRes.length > 0) {
 				sqlInfo = {
 					user: sqlRes[0].user,
