@@ -30,6 +30,11 @@ preflight_database_url() {
 }
 
 run_migrate_deploy() {
+	if schema_is_postgresql && ! is_postgres_url; then
+		echo "=== Skipping prisma migrate deploy (PostgreSQL schema; slot DATABASE_URL still MySQL until cutover) ==="
+		return 0
+	fi
+
 	local config_flag=()
 	if is_postgres_url; then
 		echo "=== Postgres DATABASE_URL — using ${PG_CONFIG} ==="
