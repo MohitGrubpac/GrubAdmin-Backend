@@ -46,6 +46,16 @@ async function main() {
 		return;
 	}
 
+	if (
+		databaseUrl.startsWith("postgresql://") ||
+		databaseUrl.startsWith("postgres://")
+	) {
+		console.log(
+			"PostgreSQL DATABASE_URL — skipping MySQL SHOW PROCESSLIST / KILL cleanup",
+		);
+		return;
+	}
+
 	const dbUrl = new URL(databaseUrl);
 	const pool = createPool({
 		host: dbUrl.hostname,
