@@ -40,8 +40,14 @@ export interface MobileBoxDetails extends MobileBoxSummary {
 
 export interface MobileBoxSettingsPatch {
 	is_dual_zone?: boolean;
+	/** @deprecated Use zone_1_target_temp — measured temps are read-only on medical mobile */
 	zone_1_temp?: number;
+	/** @deprecated Use zone_2_target_temp — measured temps are read-only on medical mobile */
 	zone_2_temp?: number;
+	zone_1_target_temp?: number;
+	zone_2_target_temp?: number;
+	zone_1_status?: boolean;
+	zone_2_status?: boolean;
 	advert_display_enabled?: boolean;
 	ioniser_enabled?: boolean;
 	light_enabled?: boolean;

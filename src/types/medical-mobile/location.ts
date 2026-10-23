@@ -1,9 +1,10 @@
 export interface MedicalBoxLocation {
-	lat: number;
-	lng: number;
-	updated_at: string;
+	lat: number | null;
+	lng: number | null;
+	updated_at: string | null;
 	address_hint: string | null;
-	gps_status: "on" | "off" | "unavailable";
+	gps_status: "on" | "off" | "unavailable" | "stale";
+	gps_updated_at?: string | null;
 }
 
 /** Native OS share payload for POST .../location/share (Option A — no web share page). */

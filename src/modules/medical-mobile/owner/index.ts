@@ -36,6 +36,7 @@ import {
 	getBoxAlertsHandler,
 } from "@/modules/medical-mobile/owner/handlers/box/get-box-location.handler";
 import { getCallMetadataHandler } from "@/modules/medical-mobile/owner/handlers/emergency/get-call-metadata.handler";
+import { postAlertHandler as postOwnerEmergencyAlertHandler } from "@/modules/medical-mobile/owner/handlers/emergency/post-alert.handler";
 import { lockBoxByIdHandler } from "@/modules/medical-mobile/owner/handlers/grublock/lock-box-by-id.handler";
 import { lockGrublockHandler } from "@/modules/medical-mobile/owner/handlers/grublock/lock-box.handler";
 import { emergencyUnlockHandler } from "@/modules/medical-mobile/owner/handlers/grublock/emergency-unlock.handler";
@@ -104,6 +105,7 @@ medicalMobileOwnerRouter.post("/boxes/:box_id/location/share", ...shareBoxLocati
 medicalMobileOwnerRouter.get("/boxes/:box_id/diagnostics", ...getBoxDiagnosticsHandler);
 medicalMobileOwnerRouter.get("/boxes/:box_id/alerts", ...getBoxAlertsHandler);
 medicalMobileOwnerRouter.get("/emergency/call-metadata", ...getCallMetadataHandler);
+medicalMobileOwnerRouter.post("/emergency/alert", ...postOwnerEmergencyAlertHandler);
 medicalMobileOwnerRouter.patch("/boxes/:box_id/lock", ...lockBoxByIdHandler);
 
 /** GrubLock — lock without OTP; emergency unlock without OTP */

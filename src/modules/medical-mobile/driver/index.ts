@@ -99,7 +99,11 @@ medicalMobileDriverRouter.patch("/boxes/:box_id/settings", ...updateBoxSettingsH
 medicalMobileDriverRouter.post("/boxes/:box_id/connection", ...connectBoxHandler);
 medicalMobileDriverRouter.delete("/boxes/:box_id/connection", ...disconnectBoxHandler);
 medicalMobileDriverRouter.post("/boxes/:box_id/lock/otp", limits.sensitiveOtp, ...requestLockOtpHandler);
+medicalMobileDriverRouter.post("/boxes/:box_id/otp-lock", limits.sensitiveOtp, ...requestLockOtpHandler);
+medicalMobileDriverRouter.post("/boxes/:box_id/lock/otp/resend", limits.sensitiveOtp, ...requestLockOtpHandler);
+medicalMobileDriverRouter.post("/boxes/:box_id/otp-lock/resend", limits.sensitiveOtp, ...requestLockOtpHandler);
 medicalMobileDriverRouter.post("/boxes/:box_id/lock/verify", limits.sensitiveOtp, ...verifyLockOtpHandler);
+medicalMobileDriverRouter.post("/boxes/:box_id/otp-lock/verify", limits.sensitiveOtp, ...verifyLockOtpHandler);
 medicalMobileDriverRouter.patch("/boxes/:box_id/lock", ...lockBoxHandler);
 medicalMobileDriverRouter.get("/boxes/:box_id/location", ...getBoxLocationHandler);
 medicalMobileDriverRouter.post("/boxes/:box_id/location/share", ...shareBoxLocationHandler);

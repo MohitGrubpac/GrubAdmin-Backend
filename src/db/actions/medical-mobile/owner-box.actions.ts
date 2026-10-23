@@ -1,6 +1,9 @@
 import { prisma } from "@/db";
-import { actionGrubpac, updateBoxLockStatus } from "@/db/actions/box.actions.ts";
-import type { hardware_state } from "@/db/types";
+import { updateBoxLockStatus } from "@/db/actions/box.actions.ts";
+import {
+	applyMedicalMobileBoxSettingsPatch,
+	medicalMobileSettingsPatchHasField,
+} from "@/db/actions/medical-mobile/box-settings.helpers.ts";
 import { APIError } from "@/types/error";
 import type {
 	MobileBoxConnectionResult,
@@ -272,64 +275,22 @@ export const unassignOwnerBox = async (args: { box_id: string; client_id: string
 	});
 };
 
-const mapSettingsPatchToGrubpac = (patch: MobileBoxSettingsPatch) => {
-	const payload: {
-		dual_zone_status?: hardware_state;
-		zone1_temp?: number;
-		zone2_temp?: number;
-		ioniser_status?: hardware_state;
-	} = {};
-
-	if (patch.is_dual_zone !== undefined) {
-		payload.dual_zone_status = boolToHardwareState(patch.is_dual_zone);
-	}
-	if (patch.zone_1_temp !== undefined) {
-		payload.zone1_temp = patch.zone_1_temp;
-	}
-	if (patch.zone_2_temp !== undefined) {
-		payload.zone2_temp = patch.zone_2_temp;
-	}
-	if (patch.ioniser_enabled !== undefined) {
-		payload.ioniser_status = boolToHardwareState(patch.ioniser_enabled);
-	}
-
-	return payload;
-};
-
 export const updateOwnerBoxSettings = async (args: {
 	box_id: string;
 	client_id: string;
 	patch: MobileBoxSettingsPatch;
 }): Promise<MobileBoxSettingsUpdateResult> => {
-	const allowedKeys: (keyof MobileBoxSettingsPatch)[] = [
-		"is_dual_zone",
-		"zone_1_temp",
-		"zone_2_temp",
-		"ioniser_enabled",
-	];
-	const hasPatchField = allowedKeys.some((key) => args.patch[key] !== undefined);
-
-	if (!hasPatchField) {
+	if (!medicalMobileSettingsPatchHasField(args.patch)) {
 		throw new APIError("At least one owner setting field is required", undefined, undefined, 400);
 	}
 
-	const ownerPatch: MobileBoxSettingsPatch = {
-		is_dual_zone: args.patch.is_dual_zone,
-		zone_1_temp: args.patch.zone_1_temp,
-		zone_2_temp: args.patch.zone_2_temp,
-		ioniser_enabled: args.patch.ioniser_enabled,
-	};
-
 	const { box } = await resolveOwnerBoxById(args);
-	const grubpacPayload = mapSettingsPatchToGrubpac(ownerPatch);
 
-	if (Object.keys(grubpacPayload).length > 0) {
-		await actionGrubpac({
-			ids: [box.id],
-			client_id: args.client_id,
-			...grubpacPayload,
-		});
-	}
+	await applyMedicalMobileBoxSettingsPatch({
+		box_id: box.id,
+		client_id: args.client_id,
+		patch: args.patch,
+	});
 
 	const updated = await prisma.box.findFirst({
 		where: { id: box.id },
@@ -344,7 +305,14 @@ export const updateOwnerBoxSettings = async (args: {
 	}
 
 	const currentSettings = toMobileBoxSettings(updated.telemetry);
-	const settings = mergeSettingsPatch(currentSettings, ownerPatch);
+	const settings = mergeSettingsPatch(currentSettings, {
+		is_dual_zone: args.patch.is_dual_zone,
+		zone_1_target_temp: args.patch.zone_1_target_temp,
+		zone_2_target_temp: args.patch.zone_2_target_temp,
+		zone_1_status: args.patch.zone_1_status,
+		zone_2_status: args.patch.zone_2_status,
+		ioniser_enabled: args.patch.ioniser_enabled,
+	});
 
 	return {
 		id: updated.id,
@@ -439,15 +407,40 @@ export const lockOwnerBoxes = async (args: {
 	ids: string[];
 	client_id: string;
 	user: { id: string; email: string; name: string };
+	lock_status?: "locked" | "unlocked";
 }): Promise<void> => {
 	await resolveOwnerBoxesByIds({ ids: args.ids, client_id: args.client_id });
 
 	await updateBoxLockStatus({
 		ids: args.ids,
-		lock_status: "locked",
+		lock_status: args.lock_status ?? "locked",
 		user: args.user,
 		client_id: args.client_id,
 	});
+};
+
+export const patchOwnerBoxLock = async (args: {
+	box_id: string;
+	client_id: string;
+	action: "lock" | "unlock";
+	user: { id: string; email: string; name: string };
+}): Promise<{ id: string; is_locked: boolean }> => {
+	await lockOwnerBoxes({
+		ids: [args.box_id],
+		client_id: args.client_id,
+		user: args.user,
+		lock_status: args.action === "lock" ? "locked" : "unlocked",
+	});
+
+	const box = await prisma.box.findFirst({
+		where: { id: args.box_id, client_id: args.client_id },
+		include: { lock: true },
+	});
+
+	return {
+		id: args.box_id,
+		is_locked: box?.lock?.lock_status === "locked",
+	};
 };
 
 export const getOwnerBoxLocation = async (args: {
@@ -468,7 +461,8 @@ export const getOwnerBoxLocation = async (args: {
 		lat: gps.lat,
 		lng: gps.lng,
 		gps_status: gps.gps_status,
-		updated_at: gps.updated_at ?? new Date().toISOString(),
+		updated_at: gps.updated_at,
+		gps_updated_at: gps.gps_updated_at,
 		address_hint: addressParts.length > 0 ? addressParts.join(", ") : null,
 	};
 };
