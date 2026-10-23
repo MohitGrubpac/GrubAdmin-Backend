@@ -21,7 +21,7 @@ interface MobileConfig {
 interface ResponseData {
 	config: MobileConfig;
 	capabilities?: {
-		zone_target_temp_c: { min: number; max: number };
+		zone_target_temp_c: { min_c: number; max_c: number };
 	};
 }
 

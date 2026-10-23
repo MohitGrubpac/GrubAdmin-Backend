@@ -2,8 +2,31 @@ import { describe, expect, test, mock, beforeEach } from "bun:test";
 import { Hono } from "hono";
 import { medicalMobileAuthRouter } from "@/modules/medical-mobile/auth";
 import { globalErrorHandler } from "@/middlewares/error";
+import type { GetUniqueMedicalEmployeeResponse } from "@/db/actions/medical/employee.actions";
 
-const getUniqueMedicalEmployee = mock(() => Promise.resolve(null));
+type CheckAccountJson = {
+	is_account_found?: boolean;
+	is_password_set?: boolean;
+	persona?: string;
+	api_prefix?: string;
+	message?: string;
+};
+
+type LoginJson = {
+	persona?: string;
+	api_prefix?: string;
+	client_id?: string;
+	data?: { auth_token?: string };
+};
+
+const getUniqueMedicalEmployee = mock(
+	(_args: {
+		email?: string;
+		phone?: string;
+		id?: string;
+		employee_display_id?: string;
+	}): Promise<GetUniqueMedicalEmployeeResponse> => Promise.resolve(null),
+);
 
 mock.module("@/db/actions/medical/employee.actions", () => ({
 	getUniqueMedicalEmployee,
@@ -89,7 +112,7 @@ describe("Medical mobile unified auth — check-account", () => {
 		});
 
 		expect(res.status).toBe(200);
-		const body = await res.json();
+		const body = (await res.json()) as CheckAccountJson;
 		expect(body.is_account_found).toBe(false);
 		expect(body.is_password_set).toBe(false);
 		expect(body.persona).toBeUndefined();
@@ -100,7 +123,7 @@ describe("Medical mobile unified auth — check-account", () => {
 		getUniqueMedicalEmployee.mockResolvedValue({
 			type: "admin",
 			employee: { id: "client-1", email: "owner@test.com", password: "hashed" },
-		});
+		} as GetUniqueMedicalEmployeeResponse);
 		const app = createTestApp();
 
 		const res = await app.request("/api/v1/medical-mobile/auth/check-account", {
@@ -109,7 +132,7 @@ describe("Medical mobile unified auth — check-account", () => {
 			body: JSON.stringify({ email: "owner@test.com" }),
 		});
 
-		const body = await res.json();
+		const body = (await res.json()) as CheckAccountJson;
 		expect(body.is_account_found).toBe(true);
 		expect(body.is_password_set).toBe(true);
 		expect(body.persona).toBe("owner");
@@ -125,7 +148,7 @@ describe("Medical mobile unified auth — check-account", () => {
 				email: "driver@test.com",
 				password: null,
 			},
-		});
+		} as GetUniqueMedicalEmployeeResponse);
 		const app = createTestApp();
 
 		const res = await app.request("/api/v1/medical-mobile/auth/check-account", {
@@ -134,7 +157,7 @@ describe("Medical mobile unified auth — check-account", () => {
 			body: JSON.stringify({ email: "driver@test.com" }),
 		});
 
-		const body = await res.json();
+		const body = (await res.json()) as CheckAccountJson;
 		expect(body.is_account_found).toBe(true);
 		expect(body.is_password_set).toBe(false);
 		expect(body.persona).toBe("driver");
@@ -147,7 +170,7 @@ describe("Medical mobile unified auth — check-account", () => {
 		getUniqueMedicalEmployee.mockResolvedValue({
 			type: "manager",
 			employee: { id: "mgr-1", email: "mgr@test.com", password: "hashed" },
-		});
+		} as GetUniqueMedicalEmployeeResponse);
 		const app = createTestApp();
 
 		const res = await app.request("/api/v1/medical-mobile/auth/check-account", {
@@ -156,7 +179,7 @@ describe("Medical mobile unified auth — check-account", () => {
 			body: JSON.stringify({ email: "mgr@test.com" }),
 		});
 
-		const body = await res.json();
+		const body = (await res.json()) as CheckAccountJson;
 		expect(body.is_account_found).toBe(false);
 		expect(body.persona).toBeUndefined();
 	});
@@ -174,7 +197,7 @@ describe("Medical mobile unified auth — login", () => {
 		getUniqueMedicalEmployee.mockResolvedValue({
 			type: "admin",
 			employee: { id: "client-1", email: "owner@test.com", password: "hashed" },
-		});
+		} as GetUniqueMedicalEmployeeResponse);
 		const app = createTestApp();
 
 		const res = await app.request("/api/v1/medical-mobile/auth/login", {
@@ -184,11 +207,11 @@ describe("Medical mobile unified auth — login", () => {
 		});
 
 		expect(res.status).toBe(200);
-		const body = await res.json();
+		const body = (await res.json()) as LoginJson;
 		expect(body.persona).toBe("owner");
 		expect(body.api_prefix).toBe("medical-mobile/owner/");
 		expect(body.client_id).toBe("client-1");
-		expect(body.data.auth_token).toBe("auth-token-mock");
+		expect(body.data?.auth_token).toBe("auth-token-mock");
 		expect(signMedicalMobileAuthToken).toHaveBeenCalledWith({
 			id: "client-1",
 			role: "admin",
@@ -206,7 +229,7 @@ describe("Medical mobile unified auth — login", () => {
 				email: "driver@test.com",
 				password: "hashed",
 			},
-		});
+		} as GetUniqueMedicalEmployeeResponse);
 		const app = createTestApp();
 
 		const res = await app.request("/api/v1/medical-mobile/auth/login", {
@@ -215,7 +238,7 @@ describe("Medical mobile unified auth — login", () => {
 			body: JSON.stringify({ email: "driver@test.com", password: "secret123" }),
 		});
 
-		const body = await res.json();
+		const body = (await res.json()) as LoginJson;
 		expect(body.persona).toBe("driver");
 		expect(body.api_prefix).toBe("medical-mobile/driver/");
 		expect(body.client_id).toBe("client-a");
@@ -231,7 +254,7 @@ describe("Medical mobile unified auth — login", () => {
 		getUniqueMedicalEmployee.mockResolvedValue({
 			type: "admin",
 			employee: { id: "client-1", email: "owner@test.com", password: "hashed" },
-		});
+		} as GetUniqueMedicalEmployeeResponse);
 		compareHash.mockResolvedValue(false);
 		const app = createTestApp();
 

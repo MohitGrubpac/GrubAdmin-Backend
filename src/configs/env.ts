@@ -109,6 +109,14 @@ export const DELIVERY_GENERAL_RATE_MAX = parseInt(process.env.DELIVERY_GENERAL_R
 /** Max OTP/auth requests per 15 min for admin portal auth routes. */
 export const ADMIN_AUTH_RATE_MAX = parseInt(process.env.ADMIN_AUTH_RATE_MAX || "500", 10);
 
+/** Optional ElastiCache/Valkey URL (e.g. rediss://clustercfg...). When unset, Redis helpers fail-open. */
+export const REDIS_URL = process.env.REDIS_URL as string | undefined;
+
+/** When true, treat REDIS_URL host as cluster mode (also auto-detected for clustercfg.* hosts). */
+export const REDIS_CLUSTER = ["true", "1"].includes(
+	(process.env.REDIS_CLUSTER || "").trim().toLowerCase(),
+);
+
 export const loadEnv = (): void => {
 	const requiredEnvVars = [
 		"PORT",
