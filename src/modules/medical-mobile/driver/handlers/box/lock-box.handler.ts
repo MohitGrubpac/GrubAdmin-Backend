@@ -1,14 +1,22 @@
 import { loggerService } from "@/services/system-log.ts";
 import { createHandlers } from "@/utils/hono-factory.ts";
 import { medicalMobileAuthGuard } from "@/middlewares/auth";
-import { resolveHandlerBoxById } from "@/db/actions/medical-mobile/box.actions.ts";
-import { updateBoxLockStatus } from "@/db/actions/box.actions.ts";
-import { boxIdParamValidator } from "@/modules/medical-mobile/driver/validators/box.validators.ts";
+import { patchHandlerBoxLock } from "@/db/actions/medical-mobile/box.actions.ts";
+import {
+	boxIdParamValidator,
+	boxLockActionBodyValidator,
+} from "@/modules/medical-mobile/driver/validators/box.validators.ts";
 import type { APIResponse } from "@/types/api";
+
+interface LockReadback {
+	id: string;
+	is_locked: boolean;
+}
 
 export const lockBoxHandler = createHandlers(
 	medicalMobileAuthGuard(["handler"], "driver"),
 	boxIdParamValidator,
+	boxLockActionBodyValidator,
 	async (context) => {
 		const user_id = context.get("user_id");
 		const client_id = context.get("client_id");
@@ -20,22 +28,18 @@ export const lockBoxHandler = createHandlers(
 		const employeeEmail = user.email?.trim() ?? "";
 		const employeeName = `${user.first_name ?? ""} ${user.last_name ?? ""}`.trim();
 		const { box_id } = context.req.valid("param");
+		const { action } = context.req.valid("json");
 
-		const { box } = await resolveHandlerBoxById({
+		const data = await patchHandlerBoxLock({
 			box_id,
 			client_id,
 			employee_id: user_id,
-		});
-
-		await updateBoxLockStatus({
-			ids: [box.id],
-			lock_status: "locked",
+			action,
 			user: {
 				id: user_id,
 				email: employeeEmail,
 				name: employeeName,
 			},
-			client_id,
 		});
 
 		try {
@@ -49,19 +53,19 @@ export const lockBoxHandler = createHandlers(
 					table: "vertical_medical_employee",
 				},
 				client_id,
-				subject: { id: box.id, name: box.box_display_id, type: "box" },
-				metadata: { action: "lock" },
+				subject: { id: data.id, name: box_id, type: "box" },
+				metadata: { action },
 			});
 		} catch {
 			// Do not block response for logging failure
 		}
 
-		return context.json<APIResponse<null>>(
+		return context.json<APIResponse<LockReadback>>(
 			{
 				success: true,
 				code: 200,
-				message: "Box locked successfully",
-				data: null,
+				message: action === "lock" ? "Box locked successfully" : "Box unlocked successfully",
+				data,
 			},
 			{ status: 200 },
 		);

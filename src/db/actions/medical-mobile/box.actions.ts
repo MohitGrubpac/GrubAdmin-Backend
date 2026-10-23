@@ -1,7 +1,6 @@
 import { prisma } from "@/db";
-import { actionGrubpac, updateBoxLockStatus } from "@/db/actions/box.actions.ts";
+import { updateBoxLockStatus } from "@/db/actions/box.actions.ts";
 import { MedicalEmployeeOtp } from "@/db/mongo-schema";
-import type { hardware_state } from "@/db/types";
 import { APIError } from "@/types/error";
 import type {
 	LockAction,
@@ -14,7 +13,6 @@ import type {
 import type { MedicalBoxDiagnostics } from "@/types/medical-mobile/diagnostics";
 import type { MedicalBoxLocation } from "@/types/medical-mobile/location";
 import {
-	boolToHardwareState,
 	mergeSettingsPatch,
 	toMobileBoxDetails,
 	toMobileBoxSettings,
@@ -33,6 +31,10 @@ import { resolveBoxGpsCoords } from "@/utils/box-gps.ts";
 import { buildMedicalBoxDiagnostics } from "@/db/actions/medical-mobile/diagnostics.actions.ts";
 import { buildMedicalLocationSharePayload } from "@/db/actions/medical-mobile/location-share.actions.ts";
 import type { MedicalBoxLocationShareResponse } from "@/types/medical-mobile/location";
+import {
+	applyMedicalMobileBoxSettingsPatch,
+	medicalMobileSettingsPatchHasField,
+} from "@/db/actions/medical-mobile/box-settings.helpers.ts";
 
 const MAX_LOCK_OTP_ATTEMPTS = 3;
 
@@ -217,59 +219,23 @@ export const unlinkHandlerBox = async (args: {
 	});
 };
 
-const mapSettingsPatchToGrubpac = (patch: MobileBoxSettingsPatch) => {
-	const payload: {
-		dual_zone_status?: hardware_state;
-		zone1_temp?: number;
-		zone2_temp?: number;
-		advert_screen_status?: hardware_state;
-		ioniser_status?: hardware_state;
-		light_status?: hardware_state;
-	} = {};
-
-	if (patch.is_dual_zone !== undefined) {
-		payload.dual_zone_status = boolToHardwareState(patch.is_dual_zone);
-	}
-	if (patch.zone_1_temp !== undefined) {
-		payload.zone1_temp = patch.zone_1_temp;
-	}
-	if (patch.zone_2_temp !== undefined) {
-		payload.zone2_temp = patch.zone_2_temp;
-	}
-	if (patch.advert_display_enabled !== undefined) {
-		payload.advert_screen_status = boolToHardwareState(patch.advert_display_enabled);
-	}
-	if (patch.ioniser_enabled !== undefined) {
-		payload.ioniser_status = boolToHardwareState(patch.ioniser_enabled);
-	}
-	if (patch.light_enabled !== undefined) {
-		payload.light_status = boolToHardwareState(patch.light_enabled);
-	}
-
-	return payload;
-};
-
 export const updateHandlerBoxSettings = async (args: {
 	box_id: string;
 	client_id: string;
 	employee_id: string;
 	patch: MobileBoxSettingsPatch;
 }): Promise<MobileBoxSettingsUpdateResult> => {
-	const hasPatchField = Object.values(args.patch).some((v) => v !== undefined);
-	if (!hasPatchField) {
+	if (!medicalMobileSettingsPatchHasField(args.patch)) {
 		throw new APIError("At least one setting field is required", undefined, undefined, 400);
 	}
 
 	const { box } = await resolveHandlerBoxById(args);
-	const grubpacPayload = mapSettingsPatchToGrubpac(args.patch);
 
-	if (Object.keys(grubpacPayload).length > 0) {
-		await actionGrubpac({
-			ids: [box.id],
-			client_id: args.client_id,
-			...grubpacPayload,
-		});
-	}
+	await applyMedicalMobileBoxSettingsPatch({
+		box_id: box.id,
+		client_id: args.client_id,
+		patch: args.patch,
+	});
 
 	const updated = await prisma.box.findFirst({
 		where: { id: box.id },
@@ -287,8 +253,10 @@ export const updateHandlerBoxSettings = async (args: {
 
 	const settings = mergeSettingsPatch(currentSettings, {
 		is_dual_zone: args.patch.is_dual_zone,
-		zone_1_temp: args.patch.zone_1_temp,
-		zone_2_temp: args.patch.zone_2_temp,
+		zone_1_target_temp: args.patch.zone_1_target_temp,
+		zone_2_target_temp: args.patch.zone_2_target_temp,
+		zone_1_status: args.patch.zone_1_status,
+		zone_2_status: args.patch.zone_2_status,
 		advert_display_enabled: args.patch.advert_display_enabled,
 		ioniser_enabled: args.patch.ioniser_enabled,
 		light_enabled: args.patch.light_enabled,
@@ -501,7 +469,8 @@ export const getHandlerBoxLocation = async (args: {
 		lat: gps.lat,
 		lng: gps.lng,
 		gps_status: gps.gps_status,
-		updated_at: gps.updated_at ?? new Date().toISOString(),
+		updated_at: gps.updated_at,
+		gps_updated_at: gps.gps_updated_at,
 		address_hint: addressParts.length > 0 ? addressParts.join(", ") : null,
 	};
 };
@@ -524,6 +493,42 @@ export const getHandlerBoxDiagnostics = async (args: {
 }): Promise<MedicalBoxDiagnostics> => {
 	const { box } = await resolveHandlerBoxById(args);
 	return buildMedicalBoxDiagnostics(box);
+};
+
+export const patchHandlerBoxLock = async (args: {
+	box_id: string;
+	client_id: string;
+	employee_id: string;
+	action: "lock" | "unlock";
+	user: { id: string; email: string; name: string };
+}): Promise<{ id: string; is_locked: boolean }> => {
+	if (args.action === "unlock") {
+		throw new APIError(
+			"Unlock requires OTP verification via POST /boxes/:box_id/lock/verify",
+			undefined,
+			undefined,
+			400,
+		);
+	}
+
+	const { box } = await resolveHandlerBoxById(args);
+
+	await updateBoxLockStatus({
+		ids: [box.id],
+		lock_status: "locked",
+		user: args.user,
+		client_id: args.client_id,
+	});
+
+	const updated = await prisma.box.findFirst({
+		where: { id: box.id },
+		include: { lock: true },
+	});
+
+	return {
+		id: box.id,
+		is_locked: updated?.lock?.lock_status === "locked",
+	};
 };
 
 export { getHandlerBoxAlerts } from "@/db/actions/medical-mobile/box-alerts.actions.ts";

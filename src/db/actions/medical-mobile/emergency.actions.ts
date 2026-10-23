@@ -6,6 +6,7 @@ import type {
 	MedicalEmergencyCallMetadata,
 } from "@/types/medical-mobile/emergency";
 import { resolveHandlerBoxById } from "@/db/actions/medical-mobile/box.actions.ts";
+import { resolveOwnerBoxById } from "@/db/actions/medical-mobile/owner-box.actions.ts";
 import { loggerService } from "@/services/system-log.ts";
 
 const toE164 = (country_code?: string | null, mobile_number?: string | null): string => {
@@ -38,14 +39,22 @@ export const postEmergencyAlert = async (args: {
 	client_id: string;
 	employee_id: string;
 	employee_email: string;
+	actor_role: "handler" | "owner";
 	payload: MedicalEmergencyAlertRequest;
 }): Promise<MedicalEmergencyAlertResponse> => {
 	if (args.payload.box_id) {
-		await resolveHandlerBoxById({
-			box_id: args.payload.box_id,
-			client_id: args.client_id,
-			employee_id: args.employee_id,
-		});
+		if (args.actor_role === "owner") {
+			await resolveOwnerBoxById({
+				box_id: args.payload.box_id,
+				client_id: args.client_id,
+			});
+		} else {
+			await resolveHandlerBoxById({
+				box_id: args.payload.box_id,
+				client_id: args.client_id,
+				employee_id: args.employee_id,
+			});
+		}
 	}
 
 	const incident_id = randomUUID();
@@ -58,8 +67,8 @@ export const postEmergencyAlert = async (args: {
 			actor: {
 				id: args.employee_id,
 				name: args.employee_email || "Handler",
-				role: "handler",
-				table: "vertical_medical_employee",
+				role: args.actor_role === "owner" ? "owner" : "handler",
+				table: args.actor_role === "owner" ? "client" : "vertical_medical_employee",
 			},
 			client_id: args.client_id,
 			subject: args.payload.box_id

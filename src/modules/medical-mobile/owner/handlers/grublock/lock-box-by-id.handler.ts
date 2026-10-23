@@ -1,24 +1,35 @@
 import { loggerService } from "@/services/system-log.ts";
 import { createHandlers } from "@/utils/hono-factory.ts";
 import { medicalMobileAuthGuard } from "@/middlewares/auth";
-import { lockOwnerBoxes } from "@/db/actions/medical-mobile/owner-box.actions.ts";
-import { boxIdParamValidator } from "@/modules/medical-mobile/owner/validators/box.validators.ts";
+import { patchOwnerBoxLock } from "@/db/actions/medical-mobile/owner-box.actions.ts";
+import {
+	boxIdParamValidator,
+	boxLockActionBodyValidator,
+} from "@/modules/medical-mobile/owner/validators/box.validators.ts";
 import type { APIResponse } from "@/types/api";
 import type { client } from "@/db/types";
 import { getOwnerDisplayName } from "@/modules/medical-mobile/owner/handlers/auth/auth.utils.ts";
 
+interface LockReadback {
+	id: string;
+	is_locked: boolean;
+}
+
 export const lockBoxByIdHandler = createHandlers(
 	medicalMobileAuthGuard(["admin"], "owner"),
 	boxIdParamValidator,
+	boxLockActionBodyValidator,
 	async (context) => {
 		const user_id = context.get("user_id");
 		const client_id = context.get("client_id");
 		const user = context.get("user") as client;
 		const { box_id } = context.req.valid("param");
+		const { action } = context.req.valid("json");
 
-		await lockOwnerBoxes({
-			ids: [box_id],
+		const data = await patchOwnerBoxLock({
+			box_id,
 			client_id,
+			action,
 			user: {
 				id: user_id,
 				email: user.email?.trim() ?? "",
@@ -38,18 +49,18 @@ export const lockBoxByIdHandler = createHandlers(
 				},
 				client_id,
 				subject: { id: box_id, name: box_id, type: "box" },
-				metadata: { action: "lock" },
+				metadata: { action },
 			});
 		} catch {
 			// Do not block response for logging failure
 		}
 
-		return context.json<APIResponse<null>>(
+		return context.json<APIResponse<LockReadback>>(
 			{
 				success: true,
 				code: 200,
-				message: "Box locked successfully",
-				data: null,
+				message: action === "lock" ? "Box locked successfully" : "Box unlocked successfully",
+				data,
 			},
 			{ status: 200 },
 		);
