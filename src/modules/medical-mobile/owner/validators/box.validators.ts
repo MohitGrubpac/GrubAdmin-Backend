@@ -1,6 +1,10 @@
 import { validatorErrorHandler } from "@/utils/zod";
 import { zValidator } from "@hono/zod-validator";
 import z from "zod";
+import {
+	medicalMobileBoxSettingsFields,
+	medicalMobileBoxSettingsRefine,
+} from "@/modules/medical-mobile/validators/box-settings.shared.ts";
 
 export const boxIdParamValidator = zValidator(
 	"param",
@@ -30,15 +34,20 @@ export const claimBoxBodyValidator = zValidator(
 export const updateBoxSettingsBodyValidator = zValidator(
 	"json",
 	z
-		.object({
-			is_dual_zone: z.boolean().optional(),
-			zone_1_temp: z.number().optional(),
-			zone_2_temp: z.number().optional(),
-			ioniser_enabled: z.boolean().optional(),
-		})
-		.refine((data) => Object.values(data).some((value) => value !== undefined), {
+		.object(medicalMobileBoxSettingsFields)
+		.refine(medicalMobileBoxSettingsRefine, {
 			message: "At least one setting field is required",
 		}),
+	(r) => {
+		if (!r.success) validatorErrorHandler(r.error);
+	},
+);
+
+export const boxLockActionBodyValidator = zValidator(
+	"json",
+	z.object({
+		action: z.enum(["lock", "unlock"]),
+	}),
 	(r) => {
 		if (!r.success) validatorErrorHandler(r.error);
 	},

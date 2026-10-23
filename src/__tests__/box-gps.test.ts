@@ -7,20 +7,23 @@ import {
 } from "@/utils/simulator-gps.ts";
 
 describe("resolveBoxGpsCoords", () => {
+	const freshGpsAt = new Date();
+
 	test("returns coordinates when gps_status is off but lat/lng exist", () => {
 		const result = resolveBoxGpsCoords({
 			gps_status: "off",
 			power_status: "on",
 			latitude: 12.9716,
 			longitude: 77.5946,
-			gps_updated_at: new Date("2026-08-12T10:00:00.000Z"),
+			gps_updated_at: freshGpsAt,
 		} as never);
 
 		expect(result).toEqual({
 			lat: 12.9716,
 			lng: 77.5946,
-			gps_status: "on",
-			updated_at: "2026-08-12T10:00:00.000Z",
+			gps_status: "off",
+			updated_at: freshGpsAt.toISOString(),
+			gps_updated_at: freshGpsAt.toISOString(),
 		});
 	});
 
@@ -30,14 +33,15 @@ describe("resolveBoxGpsCoords", () => {
 			power_status: "off",
 			latitude: 19.076,
 			longitude: 72.8777,
-			gps_updated_at: new Date("2026-08-12T10:00:00.000Z"),
+			gps_updated_at: freshGpsAt,
 		} as never);
 
 		expect(result).toEqual({
 			lat: 19.076,
 			lng: 72.8777,
-			gps_status: "on",
-			updated_at: "2026-08-12T10:00:00.000Z",
+			gps_status: "off",
+			updated_at: freshGpsAt.toISOString(),
+			gps_updated_at: freshGpsAt.toISOString(),
 		});
 	});
 
@@ -50,10 +54,11 @@ describe("resolveBoxGpsCoords", () => {
 		} as never);
 
 		expect(result).toEqual({
-			lat: 0,
-			lng: 0,
+			lat: null,
+			lng: null,
 			gps_status: "unavailable",
 			updated_at: null,
+			gps_updated_at: null,
 		});
 	});
 });

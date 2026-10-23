@@ -23,6 +23,7 @@ export const postAlertHandler = createHandlers(
 			client_id,
 			employee_id: user_id,
 			employee_email: user.email ?? "",
+			actor_role: "handler",
 			payload,
 		});
 

@@ -104,6 +104,9 @@ export const SEED_IDS = {
   FAQ_QUESTION_TR_2: deterministicUlid(),
   FAQ_QUESTION_BILL_1: deterministicUlid(),
   FAQ_QUESTION_MED_1: deterministicUlid(),
+  FAQ_QUESTION_MED_2: deterministicUlid(),
+  FAQ_QUESTION_MED_3: deterministicUlid(),
+  FAQ_CATEGORY_MEDICAL_OPS: deterministicUlid(),
 
   NOTIFICATION_1: deterministicUlid(),
   NOTIFICATION_2: deterministicUlid(),

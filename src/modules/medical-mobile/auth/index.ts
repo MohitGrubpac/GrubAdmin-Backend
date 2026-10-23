@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { globalErrorHandler } from "@/middlewares/error";
 import { createMobileRateLimits } from "@/middlewares/mobile-rate-limits";
-import { checkAccountHandler, loginHandler } from "./handlers";
+import { checkAccountHandler, loginHandler, refreshTokenHandler } from "./handlers";
 
 export const medicalMobileAuthRouter = new Hono();
 
@@ -22,3 +22,4 @@ medicalMobileAuthRouter.get("/health", (context) =>
 /** Unified entry — resolves owner vs driver persona for one Flutter app shell */
 medicalMobileAuthRouter.post("/auth/check-account", limits.auth, ...checkAccountHandler);
 medicalMobileAuthRouter.post("/auth/login", limits.auth, ...loginHandler);
+medicalMobileAuthRouter.post("/auth/refresh", limits.auth, ...refreshTokenHandler);

@@ -1,6 +1,7 @@
 import { createHandlers } from "@/utils/hono-factory.ts";
 import { getConfigs } from "@/db/actions/config.actions.ts";
 import type { APIResponse } from "@/types/api";
+import { medicalMobileZoneTempCapabilities } from "@/db/actions/medical-mobile/box-settings.helpers.ts";
 
 interface MobileConfig {
 	minAndroidVersion?: string;
@@ -19,6 +20,9 @@ interface MobileConfig {
 
 interface ResponseData {
 	config: MobileConfig;
+	capabilities?: {
+		zone_target_temp_c: { min: number; max: number };
+	};
 }
 
 export const getConfigHandler = createHandlers(async (context) => {
@@ -82,7 +86,12 @@ export const getConfigHandler = createHandlers(async (context) => {
 		{
 			success: true,
 			code: 200,
-			data: { config: mobileConfig },
+			data: {
+				config: mobileConfig,
+				capabilities: {
+					zone_target_temp_c: medicalMobileZoneTempCapabilities,
+				},
+			},
 		},
 		{ status: 200 },
 	);

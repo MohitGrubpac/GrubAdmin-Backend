@@ -1,12 +1,13 @@
 import { validatorErrorHandler } from "@/utils/zod";
 import { zValidator } from "@hono/zod-validator";
 import z from "zod";
+import { pageLimitFields } from "@/validators/pagination.ts";
 
 export const getNotificationsRequestQueryValidator = zValidator(
 	"query",
 	z.object({
-		page: z.string().optional().default("1"),
-		limit: z.string().optional().default("10"),
+		page: pageLimitFields.page.default(1),
+		limit: pageLimitFields.limit.default(10),
 		box_ids: z.string().optional(), // Comma-separated
 		types: z.string().optional(), // Comma-separated (warning,error,success,notification)
 		categories: z.string().optional(), // Comma-separated (camera,battery,lock,display,other)

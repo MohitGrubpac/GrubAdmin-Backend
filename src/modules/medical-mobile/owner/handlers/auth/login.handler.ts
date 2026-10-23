@@ -3,7 +3,7 @@ import { loginRequestBodyValidator } from "@/modules/medical-mobile/owner/valida
 import { getUniqueMedicalEmployee } from "@/db/actions/medical/employee.actions";
 import { APIError } from "@/types/error";
 import { Bcrypt } from "@/utils/bcrypt.ts";
-import { JWT } from "@/utils/jwt.ts";
+import { signMedicalMobileSessionTokens } from "@/modules/medical-mobile/auth/medical-mobile-session.ts";
 import type { APIResponse } from "@/types/api";
 import { assertOwnerAdmin, getOwnerClientId } from "./auth.utils.ts";
 
@@ -45,14 +45,19 @@ export const loginHandler = createHandlers(loginRequestBodyValidator, async (con
 		);
 	}
 
-	const payload = { id: employee.employee.id, role: "admin" as const, persona: "owner" as const };
-	const token = JWT.signMedicalMobileAuthToken(payload);
-	const refreshToken = JWT.signMedicalMobileRefreshToken(payload);
+	const client_id = getOwnerClientId(employee);
+	const { auth_token: token, refresh_token: refreshToken } =
+		await signMedicalMobileSessionTokens({
+			id: employee.employee.id,
+			role: "admin",
+			persona: "owner",
+			client_id,
+		});
 
 	return context.json<APIResponse<ResponseData>>({
 		success: true,
 		code: 200,
-		client_id: getOwnerClientId(employee),
+		client_id,
 		data: {
 			auth_token: token,
 			refresh_token: refreshToken,

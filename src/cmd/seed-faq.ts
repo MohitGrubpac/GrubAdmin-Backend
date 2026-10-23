@@ -58,6 +58,15 @@ const CATEGORIES: CategorySeed[] = [
     index: 1,
   },
   {
+    id: SEED_IDS.FAQ_CATEGORY_MEDICAL_OPS,
+    name: "Medical Mobile Operations",
+    name_normalized: "medical mobile operations",
+    vertical_id: SEED_IDS.VERTICAL_MEDICAL,
+    icon_id: SEED_IDS.ICON_MEDICAL,
+    description: "GrubLock, alerts, and facility emergency workflows for medical mobile.",
+    index: 2,
+  },
+  {
     id: SEED_IDS.FAQ_CATEGORY_SETUP,
     name: "Setup & Installation",
     name_normalized: "setup & installation",
@@ -145,6 +154,20 @@ const QUESTIONS: QuestionSeed[] = [
     question: "Is the medical box FDA approved?",
     answer: "Yes, our medical-grade boxes meet FDA storage requirements for temperature-sensitive medications.",
     category_id: SEED_IDS.FAQ_CATEGORY_MEDICAL,
+    publishing_status: "published",
+  },
+  {
+    id: SEED_IDS.FAQ_QUESTION_MED_2,
+    question: "How do I unlock GrubLock on a medical box?",
+    answer: "Drivers request an email OTP from the box lock screen, enter the code, and the server confirms unlock before the app shows success.",
+    category_id: SEED_IDS.FAQ_CATEGORY_MEDICAL_OPS,
+    publishing_status: "published",
+  },
+  {
+    id: SEED_IDS.FAQ_QUESTION_MED_3,
+    question: "Who receives a facility emergency alert?",
+    answer: "Alerts are logged for your facility account with optional box context. Use emergency call metadata in the app for the facility phone number.",
+    category_id: SEED_IDS.FAQ_CATEGORY_MEDICAL_OPS,
     publishing_status: "published",
   },
 ];
