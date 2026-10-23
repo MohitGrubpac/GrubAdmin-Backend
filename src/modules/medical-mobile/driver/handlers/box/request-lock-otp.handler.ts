@@ -11,6 +11,7 @@ import type { APIResponse } from "@/types/api";
 import { APIError } from "@/types/error";
 import { Otp } from "@/utils/otp.ts";
 import { services } from "@/services";
+import { buildMedicalLockOtpChallengeMeta } from "@/modules/medical-mobile/utils/otp-response.ts";
 
 const DEV_LOCK_OTP = "1234";
 
@@ -20,12 +21,18 @@ interface LockOtpResponseData {
 		type: string;
 		values: string[];
 	};
+	challenge_id: string;
+	expires_at: string;
+	cooldown_seconds: number;
+	recipient: {
+		type: string;
+		masked: string;
+	};
 }
 
 /**
- * POST /boxes/:box_id/lock/otp
+ * POST /boxes/:box_id/lock/otp (alias: .../otp-lock)
  * Request: { "action": "unlock" }
- * Response: { "data": { "otp_details": { "type", "values" } } }
  */
 export const requestLockOtpHandler = createHandlers(
 	medicalMobileAuthGuard(["handler"], "driver"),
@@ -71,6 +78,18 @@ export const requestLockOtpHandler = createHandlers(
 			);
 		}
 
+		const createdAt =
+			updatedOtpRecord.createdAt instanceof Date
+				? updatedOtpRecord.createdAt
+				: new Date(updatedOtpRecord.createdAt ?? Date.now());
+
+		const challengeMeta = buildMedicalLockOtpChallengeMeta({
+			otp_id: String(updatedOtpRecord.otp_id ?? updatedOtpRecord._id),
+			created_at: createdAt,
+			recipient: isProduction ? employeeEmail : DEV_LOCK_OTP,
+			recipient_type: isProduction ? "email" : "test",
+		});
+
 		if (isProduction) {
 			await services.mailer.sendEmail({
 				from: "ankan@sqaby.com",
@@ -92,7 +111,7 @@ export const requestLockOtpHandler = createHandlers(
 				},
 				client_id,
 				subject: { id: box.id, name: box.box_display_id, type: "box" },
-				metadata: { action },
+				metadata: { action, challenge_id: challengeMeta.challenge_id },
 			});
 		} catch {
 			// logging must not block OTP response
@@ -104,6 +123,10 @@ export const requestLockOtpHandler = createHandlers(
 						type: "email",
 						values: [employeeEmail],
 					},
+					challenge_id: challengeMeta.challenge_id,
+					expires_at: challengeMeta.expires_at,
+					cooldown_seconds: challengeMeta.cooldown_seconds,
+					recipient: challengeMeta.recipient,
 				}
 			: {
 					otp: DEV_LOCK_OTP,
@@ -111,6 +134,10 @@ export const requestLockOtpHandler = createHandlers(
 						type: "test",
 						values: [DEV_LOCK_OTP],
 					},
+					challenge_id: challengeMeta.challenge_id,
+					expires_at: challengeMeta.expires_at,
+					cooldown_seconds: challengeMeta.cooldown_seconds,
+					recipient: challengeMeta.recipient,
 				};
 
 		return context.json<APIResponse<LockOtpResponseData>>(

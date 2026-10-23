@@ -31,10 +31,16 @@ const identityRefineOptions = {
 const identityTransform = (data: any) => {
 	if (data.type && data.body) {
 		if (data.type === "email") {
-			data.email = data.body;
+			data.email = String(data.body).trim().toLowerCase();
 		} else if (data.type === "phone") {
-			data.phone = data.body;
+			data.phone = String(data.body).trim();
 		}
+	}
+	if (data.email) {
+		data.email = String(data.email).trim().toLowerCase();
+	}
+	if (data.phone) {
+		data.phone = String(data.phone).trim();
 	}
 	return data;
 };

@@ -13,6 +13,14 @@ export const buildMedicalLocationSharePayload = (
 	location: MedicalBoxLocation,
 	box_label: string,
 ): MedicalBoxLocationShareResponse => {
+	if (location.lat == null || location.lng == null) {
+		return {
+			...location,
+			maps_url: "",
+			share_text: `GrubPac box ${box_label} location is unavailable (no GPS fix).`,
+		};
+	}
+
 	const maps_url = buildGoogleMapsUrl(location.lat, location.lng);
 	const apple_maps_url = buildAppleMapsUrl(location.lat, location.lng);
 	const share_text = `GrubPac box ${box_label} location: ${maps_url} (Apple Maps: ${apple_maps_url})`;

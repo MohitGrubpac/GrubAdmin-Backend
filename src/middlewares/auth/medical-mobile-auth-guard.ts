@@ -7,6 +7,7 @@ import { getUniqueMedicalEmployee } from "@/db/actions/medical/employee.actions"
 import { prisma } from "@/db";
 import { logger } from "@/utils/logger";
 import type { MedicalMobileAuthPayload } from "@/types/jwt/medical-mobile-auth-payload";
+import { assertMedicalMobileTokenVersion } from "@/modules/medical-mobile/auth/medical-mobile-session.ts";
 
 const MOBILE_ALLOWED_ROLES: MedicalEmployeeRoleType[] = ["handler", "admin"];
 
@@ -86,8 +87,11 @@ export const medicalMobileAuthGuard = (
 
 		const clientRecord = await prisma.client.findUnique({
 			where: { id: client_id },
-			select: { vertical_id: true },
+			select: { vertical_id: true, auth_token_version: true },
 		});
+
+		const currentTokenVersion = clientRecord?.auth_token_version ?? 0;
+		assertMedicalMobileTokenVersion(tokenUser.token_version, currentTokenVersion);
 
 		context.set("user", employee.employee);
 		context.set("type", employee.type);

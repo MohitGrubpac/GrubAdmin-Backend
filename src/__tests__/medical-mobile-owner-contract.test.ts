@@ -71,11 +71,11 @@ describe("Medical mobile owner contract (Figma Backend API Requirements)", () =>
 		expect(routes.some((r) => r.includes("transfer-ownership"))).toBe(false);
 	});
 
-	test("driver-only emergency alert route is not on owner", () => {
+	test("owner and driver both expose emergency alert for facility SOS", () => {
 		const ownerRoutes = getRoutePaths("/api/v1/medical-mobile/owner", medicalMobileOwnerRouter);
 		const driverRoutes = getRoutePaths("/api/v1/medical-mobile/driver", medicalMobileDriverRouter);
 
-		expect(ownerRoutes.some((r) => r.includes("/emergency/alert"))).toBe(false);
+		expect(ownerRoutes.some((r) => r.includes("/emergency/alert"))).toBe(true);
 		expect(driverRoutes).toContain("POST /api/v1/medical-mobile/driver/emergency/alert");
 	});
 });

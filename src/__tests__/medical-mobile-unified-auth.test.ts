@@ -9,6 +9,14 @@ mock.module("@/db/actions/medical/employee.actions", () => ({
 	getUniqueMedicalEmployee,
 }));
 
+mock.module("@/db", () => ({
+	prisma: {
+		client: {
+			findUnique: mock(() => Promise.resolve({ auth_token_version: 0 })),
+		},
+	},
+}));
+
 const sendOtpToOwner = mock(() => Promise.resolve({ otp: "1234", email: "owner@test.com" }));
 const sendOtpToHandler = mock(() => Promise.resolve({ otp: "1234", email: "driver@test.com" }));
 
@@ -59,6 +67,7 @@ describe("Medical mobile unified auth route registration", () => {
 		expect(routes).toContain("GET /api/v1/medical-mobile/health");
 		expect(routes).toContain("POST /api/v1/medical-mobile/auth/check-account");
 		expect(routes).toContain("POST /api/v1/medical-mobile/auth/login");
+		expect(routes).toContain("POST /api/v1/medical-mobile/auth/refresh");
 	});
 });
 
@@ -184,6 +193,7 @@ describe("Medical mobile unified auth — login", () => {
 			id: "client-1",
 			role: "admin",
 			persona: "owner",
+			token_version: 0,
 		});
 	});
 
@@ -213,6 +223,7 @@ describe("Medical mobile unified auth — login", () => {
 			id: "handler-1",
 			role: "handler",
 			persona: "driver",
+			token_version: 0,
 		});
 	});
 

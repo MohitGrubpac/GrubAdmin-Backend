@@ -1,6 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { validatorErrorHandler } from "@/utils/zod.ts";
+import { pageLimitFields } from "@/validators/pagination.ts";
 
 export const getSupportCategoriesRequestQueryValidator = zValidator(
     "query",
@@ -11,8 +12,8 @@ export const getSupportCategoriesRequestQueryValidator = zValidator(
             })
             .optional(),
         id: z.ulid("Please provide a valid id").optional(),
-        limit: z.coerce.number().optional(),
-        page: z.coerce.number().optional(),
+        limit: pageLimitFields.limit.default(20),
+        page: pageLimitFields.page.default(1),
     }),
     (response) => {
         if (!response.success) {
@@ -33,8 +34,8 @@ export const getSupportQuestionsRequestQueryValidator = zValidator(
         category_id: z.string({
             error: "Please provide a valid category_id",
         }).optional(),
-        limit: z.coerce.number().optional(),
-        page: z.coerce.number().optional(),
+        limit: pageLimitFields.limit.default(20),
+        page: pageLimitFields.page.default(1),
     }),
     (response) => {
         if (!response.success) {
