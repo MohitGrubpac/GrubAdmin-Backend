@@ -13,14 +13,11 @@ export const getNotificationsHandler = createHandlers(
 		const { page, limit, box_ids, types, categories, start_date, end_date } =
 			context.req.valid("query");
 
-		const parsedPage = parseInt(page || "1", 10);
-		const parsedLimit = parseInt(limit || "10", 10);
-
 		const result = await getCampingConsumerNotifications({
 			client_id,
 			consumer_id: user_id,
-			page: parsedPage,
-			limit: parsedLimit,
+			page,
+			limit,
 			filters: {
 				box_ids: box_ids ? box_ids.split(",").map((id) => id.trim()).filter(Boolean) : undefined,
 				types: types

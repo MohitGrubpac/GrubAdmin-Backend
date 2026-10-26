@@ -1003,7 +1003,15 @@ export const getDeliveryGrubpacList = async (args: GetDeliveryGrubpacListArgs) =
 	if (requestedTable) {
 		const restaurants = await prisma.restaurant.findMany({
 			where: { client_id: args.client_id },
-			select: { id: true, name: true, full_address: true },
+			select: {
+				id: true,
+				name: true,
+				line_one: true,
+				line_two: true,
+				city: true,
+				state: true,
+				pincode: true,
+			},
 		});
 		const matched = restaurants.find(
 			(r) =>
@@ -1013,6 +1021,7 @@ export const getDeliveryGrubpacList = async (args: GetDeliveryGrubpacListArgs) =
 			return { boxes: [], count: 0, total_count: 0, groups: {} };
 		}
 
+		const matchedWithAddress = withFullAddress(matched);
 		const slug = restaurantSlug(matched.name);
 		const result = await fetchDeliveryBoxPage({
 			...baseArgs,
@@ -1023,7 +1032,7 @@ export const getDeliveryGrubpacList = async (args: GetDeliveryGrubpacListArgs) =
 			count: result.count,
 			pagination: calculatePagination(page, limit, result.count),
 			name: matched.name,
-			address: matched.full_address ?? undefined,
+			address: matchedWithAddress.full_address || undefined,
 		};
 		return {
 			boxes: [],
@@ -1052,10 +1061,18 @@ export const getDeliveryGrubpacList = async (args: GetDeliveryGrubpacListArgs) =
 	const restaurants = restaurantIds.length
 		? await prisma.restaurant.findMany({
 			where: { id: { in: restaurantIds }, client_id: args.client_id },
-			select: { id: true, name: true, full_address: true },
+			select: {
+				id: true,
+				name: true,
+				line_one: true,
+				line_two: true,
+				city: true,
+				state: true,
+				pincode: true,
+			},
 		})
 		: [];
-	const restaurantById = new Map(restaurants.map((r) => [r.id, r]));
+	const restaurantById = new Map(restaurants.map((r) => [r.id, withFullAddress(r)]));
 
 	let totalCountAcrossGroups = 0;
 
@@ -1075,7 +1092,7 @@ export const getDeliveryGrubpacList = async (args: GetDeliveryGrubpacListArgs) =
 				count: row._count._all,
 				pagination: calculatePagination(page, limit, row._count._all),
 				name: restaurant.name,
-				address: restaurant.full_address ?? undefined,
+				address: restaurant.full_address || undefined,
 			};
 		}),
 	);
