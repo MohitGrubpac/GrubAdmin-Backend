@@ -64,9 +64,17 @@ describe("delivery-mobile box mappers", () => {
 		expect(summary.battery_level).toBe(73);
 	});
 
-	test("toMobileBoxSummary returns null when neither cell has reported", () => {
+	test("toMobileBoxSummary falls back to battery_percentage when cells are missing", () => {
 		const summary = toMobileBoxSummary(
 			{ ...sampleBox, telemetry: { battery_percentage: 88 } } as any,
+			driverId,
+		);
+		expect(summary.battery_level).toBe(88);
+	});
+
+	test("toMobileBoxSummary returns null when no battery fields exist", () => {
+		const summary = toMobileBoxSummary(
+			{ ...sampleBox, telemetry: { connection_status: "connected" } } as any,
 			driverId,
 		);
 		expect(summary.battery_level).toBeNull();

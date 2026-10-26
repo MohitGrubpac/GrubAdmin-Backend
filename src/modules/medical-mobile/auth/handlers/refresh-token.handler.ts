@@ -10,8 +10,16 @@ import {
 	fetchMedicalMobileClientAuthTokenVersion,
 } from "@/modules/medical-mobile/auth/medical-mobile-session.ts";
 import { resolveMedicalMobilePersona } from "@/modules/medical-mobile/auth/persona.utils.ts";
-import { getHandlerClientId } from "@/modules/medical-mobile/driver/handlers/auth/auth.utils.ts";
-import { getOwnerClientId } from "@/modules/medical-mobile/owner/handlers/auth/auth.utils.ts";
+import {
+	assertHandlerEmployee,
+	getHandlerClientId,
+	type MedicalHandlerEmployee,
+} from "@/modules/medical-mobile/driver/handlers/auth/auth.utils.ts";
+import {
+	assertOwnerAdmin,
+	getOwnerClientId,
+	type MedicalOwnerEmployee,
+} from "@/modules/medical-mobile/owner/handlers/auth/auth.utils.ts";
 
 interface ResponseData {
 	auth_token: string;
@@ -44,8 +52,16 @@ export const refreshTokenHandler = createHandlers(
 			throw new APIError("Employee is no longer active", undefined, undefined, 403);
 		}
 
+		if (persona === "owner") {
+			assertOwnerAdmin(employee);
+		} else {
+			assertHandlerEmployee(employee);
+		}
+
 		const client_id =
-			persona === "owner" ? getOwnerClientId(employee) : getHandlerClientId(employee);
+			persona === "owner"
+				? getOwnerClientId(employee as MedicalOwnerEmployee)
+				: getHandlerClientId(employee as MedicalHandlerEmployee);
 
 		const currentVersion = await fetchMedicalMobileClientAuthTokenVersion(client_id);
 		assertMedicalMobileTokenVersion(decoded.token_version, currentVersion);
