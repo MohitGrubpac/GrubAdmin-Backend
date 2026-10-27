@@ -4,7 +4,7 @@ import type {
 	MobileBoxSummary,
 } from "@/types/delivery-mobile-box";
 import type { box_lock, box_telemetry_latest } from "@/db/types";
-import { computeOverallBatteryLevel } from "@/utils/box-battery.ts";
+import { computeOverallBatteryLevel, resolveMobileBatteryLevels } from "@/utils/box-battery.ts";
 
 type BoxWithRelations = {
 	id: string;
@@ -63,6 +63,7 @@ export const toMobileBoxDetails = (
 ): MobileBoxDetails => {
 	const summary = toMobileBoxSummary(box, driverEmployeeId);
 	const telemetry = box.telemetry;
+	const batteryLevels = resolveMobileBatteryLevels(telemetry);
 
 	return {
 		...summary,
@@ -72,8 +73,8 @@ export const toMobileBoxDetails = (
 		connection_status: telemetry?.cellular_signal ?? telemetry?.connection_status ?? null,
 		power_status: telemetry?.power_status ?? null,
 		health_status: telemetry?.health_status ?? null,
-		battery_1_level: telemetry?.battery_1_percentage ?? null,
-		battery_2_level: telemetry?.battery_2_percentage ?? null,
+		battery_1_level: batteryLevels.battery_1_level,
+		battery_2_level: batteryLevels.battery_2_level,
 		is_charging: hardwareStateToBool(telemetry?.charging_status),
 		wifi_connected: hardwareStateToBool(telemetry?.wifi_status),
 		bluetooth_available: hardwareStateToBool(telemetry?.bluetooth_status),

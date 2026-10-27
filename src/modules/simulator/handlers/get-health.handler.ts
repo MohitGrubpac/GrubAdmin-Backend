@@ -9,7 +9,7 @@ import {
 	resolveSimulatorActiveConnectionEmployeeId,
 	simulatorBoxConnectionInclude,
 } from "@/db/actions/simulator.connection.actions.ts";
-import { computeOverallBatteryLevel } from "@/utils/box-battery.ts";
+import { resolveMobileBatteryLevels } from "@/utils/box-battery.ts";
 import {
 	isSimulatorGpsAvailable,
 	resolveSimulatorLatitude,
@@ -53,9 +53,7 @@ export const getHealthHandler = createHandlers(
 					restaurant_id: null,
 					is_driver_connected: isSimulatorDriverConnected(box),
 					connection_status: box.telemetry?.cellular_signal || box.telemetry?.connection_status || "strong",
-					battery_1_level: box.telemetry?.battery_1_percentage ?? null,
-					battery_2_level: box.telemetry?.battery_2_percentage ?? null,
-					battery_level: computeOverallBatteryLevel(box.telemetry),
+					...resolveMobileBatteryLevels(box.telemetry),
 					ambient_temp: box.telemetry?.ext_temp ?? 32,
 					zone_1_temp: box.telemetry?.zone1_temp ?? 4.2,
 					zone_2_temp: box.telemetry?.zone2_temp ?? 4.5,
