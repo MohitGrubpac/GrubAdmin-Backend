@@ -61,7 +61,18 @@ jobs:
 
       - name: Add EC2 host to known_hosts
         run: |
-          ssh-keyscan -t ed25519 -H ${{ secrets.SSH_PRODUCTION_HOST }} >> ~/.ssh/known_hosts
+          HOST="${{ secrets.SSH_PRODUCTION_HOST }}"
+          for attempt in 1 2 3 4 5; do
+            if ssh-keyscan -T 15 -t ed25519,rsa,ecdsa -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null \
+              && [ -s ~/.ssh/known_hosts ]; then
+              echo "ssh-keyscan succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "ssh-keyscan attempt $attempt failed, retrying..."
+            sleep 5
+          done
+          echo "ssh-keyscan failed after 5 attempts for $HOST"
+          exit 1
 
       - name: Blue-green deploy to EC2 (production backend)
         run: |
