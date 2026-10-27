@@ -31,6 +31,46 @@ export const computeOverallBatteryLevel = (
 	return null;
 };
 
+export type BoxBatteryTelemetry =
+	| {
+			battery_1_percentage?: number | null;
+			battery_2_percentage?: number | null;
+			battery_percentage?: number | null;
+	  }
+	| null
+	| undefined;
+
+/** Mobile/simulator API shape: aggregate plus per-cell levels with legacy single-field fallback. */
+export const resolveMobileBatteryLevels = (
+	telemetry: BoxBatteryTelemetry,
+): {
+	battery_level: number | null;
+	battery_1_level: number | null;
+	battery_2_level: number | null;
+} => {
+	const battery_level = computeOverallBatteryLevel(telemetry);
+
+	let battery_1_level: number | null =
+		typeof telemetry?.battery_1_percentage === "number"
+			? telemetry.battery_1_percentage
+			: null;
+	let battery_2_level: number | null =
+		typeof telemetry?.battery_2_percentage === "number"
+			? telemetry.battery_2_percentage
+			: null;
+
+	if (
+		battery_1_level === null &&
+		battery_2_level === null &&
+		typeof battery_level === "number"
+	) {
+		battery_1_level = battery_level;
+		battery_2_level = battery_level;
+	}
+
+	return { battery_level, battery_1_level, battery_2_level };
+};
+
 /** ~24h runtime at 100% battery, scaled linearly. Null when unknown or charging. */
 export const computeBatteryEstimatedHours = (
 	batteryLevel: number | null,
