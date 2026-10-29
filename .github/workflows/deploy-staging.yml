@@ -102,6 +102,7 @@ jobs:
           echo "=== Killing idle database connections ==="
           bun src/cmd/kill-idle-connections.ts
           echo "=== Starting PM2 process ==="
+          export CORS_ALLOW_LOCALHOST=true
           pm2 start /home/ubuntu/.bun/bin/bun --name "$PM2_ID" --cwd "$DEPLOY_PATH" --kill-timeout 15000 -- start
           pm2 save
           pm2 list
