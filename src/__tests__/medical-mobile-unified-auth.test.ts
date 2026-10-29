@@ -1,6 +1,6 @@
-import { describe, expect, test, mock, beforeEach } from "bun:test";
+import { describe, expect, test, mock, beforeEach, beforeAll } from "bun:test";
 import { Hono } from "hono";
-import { medicalMobileAuthRouter } from "@/modules/medical-mobile/auth";
+import type { Hono as HonoBase } from "hono";
 import { globalErrorHandler } from "@/middlewares/error";
 import type { GetUniqueMedicalEmployeeResponse } from "@/db/actions/medical/employee.actions";
 
@@ -66,14 +66,27 @@ mock.module("@/utils/bcrypt.ts", () => ({
 	Bcrypt: { compareHash },
 }));
 
-const signMedicalMobileAuthToken = mock(() => "auth-token-mock");
-const signMedicalMobileRefreshToken = mock(() => "refresh-token-mock");
-mock.module("@/utils/jwt.ts", () => ({
-	JWT: {
-		signMedicalMobileAuthToken,
-		signMedicalMobileRefreshToken,
-	},
+const signMedicalMobileSessionTokens = mock(async () => ({
+	auth_token: "auth-token-mock",
+	refresh_token: "refresh-token-mock",
 }));
+
+mock.module("@/modules/medical-mobile/auth/medical-mobile-session.ts", () => ({
+	signMedicalMobileSessionTokens,
+	fetchMedicalMobileClientAuthTokenVersion: mock(async () => 0),
+	buildMedicalMobileAuthPayload: mock(async (args: unknown) => ({
+		...(args as object),
+		token_version: 0,
+	})),
+	invalidateMedicalMobileClientSessions: mock(async () => {}),
+	assertMedicalMobileTokenVersion: () => {},
+}));
+
+let medicalMobileAuthRouter: HonoBase;
+
+beforeAll(async () => {
+	({ medicalMobileAuthRouter } = await import("@/modules/medical-mobile/auth"));
+});
 
 function createTestApp() {
 	const app = new Hono();
@@ -97,6 +110,7 @@ describe("Medical mobile unified auth route registration", () => {
 describe("Medical mobile unified auth — check-account", () => {
 	beforeEach(() => {
 		getUniqueMedicalEmployee.mockReset();
+		getUniqueMedicalEmployee.mockImplementation(() => Promise.resolve(null));
 		sendOtpToOwner.mockClear();
 		sendOtpToHandler.mockClear();
 	});
@@ -188,9 +202,10 @@ describe("Medical mobile unified auth — check-account", () => {
 describe("Medical mobile unified auth — login", () => {
 	beforeEach(() => {
 		getUniqueMedicalEmployee.mockReset();
+		getUniqueMedicalEmployee.mockImplementation(() => Promise.resolve(null));
 		compareHash.mockReset();
 		compareHash.mockResolvedValue(true);
-		signMedicalMobileAuthToken.mockClear();
+		signMedicalMobileSessionTokens.mockClear();
 	});
 
 	test("owner login returns tokens, persona, and api_prefix", async () => {
@@ -212,11 +227,11 @@ describe("Medical mobile unified auth — login", () => {
 		expect(body.api_prefix).toBe("medical-mobile/owner/");
 		expect(body.client_id).toBe("client-1");
 		expect(body.data?.auth_token).toBe("auth-token-mock");
-		expect(signMedicalMobileAuthToken).toHaveBeenCalledWith({
+		expect(signMedicalMobileSessionTokens).toHaveBeenCalledWith({
 			id: "client-1",
 			role: "admin",
 			persona: "owner",
-			token_version: 0,
+			client_id: "client-1",
 		});
 	});
 
@@ -238,15 +253,16 @@ describe("Medical mobile unified auth — login", () => {
 			body: JSON.stringify({ email: "driver@test.com", password: "secret123" }),
 		});
 
+		expect(res.status).toBe(200);
 		const body = (await res.json()) as LoginJson;
 		expect(body.persona).toBe("driver");
 		expect(body.api_prefix).toBe("medical-mobile/driver/");
 		expect(body.client_id).toBe("client-a");
-		expect(signMedicalMobileAuthToken).toHaveBeenCalledWith({
+		expect(signMedicalMobileSessionTokens).toHaveBeenCalledWith({
 			id: "handler-1",
 			role: "handler",
 			persona: "driver",
-			token_version: 0,
+			client_id: "client-a",
 		});
 	});
 
