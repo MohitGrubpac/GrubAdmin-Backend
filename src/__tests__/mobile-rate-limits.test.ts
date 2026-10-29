@@ -1,8 +1,24 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test, afterEach } from "bun:test";
 import { Hono } from "hono";
 import { createMobileRateLimits } from "@/middlewares/mobile-rate-limits";
 
 describe("Mobile rate limits", () => {
+	const priorAuthMax = process.env.MOBILE_AUTH_RATE_MAX;
+	const priorGeneralMax = process.env.MOBILE_GENERAL_RATE_MAX;
+
+	afterEach(() => {
+		if (priorAuthMax === undefined) {
+			delete process.env.MOBILE_AUTH_RATE_MAX;
+		} else {
+			process.env.MOBILE_AUTH_RATE_MAX = priorAuthMax;
+		}
+		if (priorGeneralMax === undefined) {
+			delete process.env.MOBILE_GENERAL_RATE_MAX;
+		} else {
+			process.env.MOBILE_GENERAL_RATE_MAX = priorGeneralMax;
+		}
+	});
+
 	test("auth limit returns 429 after max requests (vertical-scoped key)", async () => {
 		process.env.MOBILE_AUTH_RATE_MAX = "5";
 		const limits = createMobileRateLimits("test-vertical-auth");
