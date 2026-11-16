@@ -18,30 +18,29 @@ describe("production observability metrics", () => {
 		}
 	});
 
-	test("requires a configured bearer token and rejects invalid credentials", () => {
-		delete process.env.METRICS_BEARER_TOKEN;
+	test("requires a configured bearer token and rejects invalid credentials", async () => {
 		const app = new Hono();
-		expect(metricsAuthorized(app.createContext(new Request("http://local/metrics")))).toBe(false);
+		app.get("/metrics", (context) => {
+			if (!metricsAuthorized(context)) {
+				return context.body(null, 404);
+			}
+			return context.text("authorized");
+		});
+
+		delete process.env.METRICS_BEARER_TOKEN;
+		const noToken = await app.request("/metrics");
+		expect(noToken.status).toBe(404);
 
 		process.env.METRICS_BEARER_TOKEN = "test-token";
-		expect(
-			metricsAuthorized(
-				app.createContext(
-					new Request("http://local/metrics", {
-						headers: { Authorization: "Bearer wrong-token" },
-					}),
-				),
-			),
-		).toBe(false);
-		expect(
-			metricsAuthorized(
-				app.createContext(
-					new Request("http://local/metrics", {
-						headers: { Authorization: "Bearer test-token" },
-					}),
-				),
-			),
-		).toBe(true);
+		const invalidToken = await app.request("/metrics", {
+			headers: { Authorization: "Bearer wrong-token" },
+		});
+		expect(invalidToken.status).toBe(404);
+
+		const validToken = await app.request("/metrics", {
+			headers: { Authorization: "Bearer test-token" },
+		});
+		expect(validToken.status).toBe(200);
 	});
 
 	test("uses matched route templates and excludes request data from metric labels", async () => {
