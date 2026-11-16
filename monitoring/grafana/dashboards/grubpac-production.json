@@ -1,0 +1,285 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": false,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 20,
+      "panels": [],
+      "title": "Application Health",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "mappings": [{ "options": { "0": { "text": "DOWN" }, "1": { "text": "UP" } }, "type": "value" }], "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
+      "id": 1,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+      "targets": [{ "expr": "up{job=\"backend\",deployment_slot=\"blue\"}", "legendFormat": "Blue", "refId": "A" }],
+      "title": "Blue instance status",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "mappings": [{ "options": { "0": { "text": "DOWN" }, "1": { "text": "UP" } }, "type": "value" }], "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
+      "id": 2,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+      "targets": [{ "expr": "up{job=\"backend\",deployment_slot=\"green\"}", "legendFormat": "Green", "refId": "A" }],
+      "title": "Green instance status",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
+      "id": 3,
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "name" },
+      "targets": [{ "expr": "grubadmin_active_slot == 1", "legendFormat": "{{deployment_slot}} active", "refId": "A" }],
+      "title": "Active production slot",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
+      "id": 4,
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "value" },
+      "targets": [{ "expr": "max(grubadmin_process_uptime_seconds{job=\"backend\"})", "legendFormat": "Process uptime", "refId": "A" }],
+      "title": "Backend uptime",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "thresholds" }, "mappings": [{ "options": { "0": { "text": "FAILING" }, "1": { "text": "OK" } }, "type": "value" }], "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 1 }] } }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
+      "id": 5,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["min"], "fields": "", "values": false }, "textMode": "value" },
+      "targets": [{ "expr": "min(up{job=\"backend\"})", "legendFormat": "All targets", "refId": "A" }],
+      "title": "Metrics scrape status",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "none" }, "overrides": [] },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
+      "id": 17,
+      "options": { "colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "name" },
+      "targets": [{ "expr": "grubadmin_active_slot == 0", "legendFormat": "{{deployment_slot}} standby", "refId": "A" }],
+      "title": "Standby production slot",
+      "type": "stat"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
+      "id": 21,
+      "panels": [],
+      "title": "API Performance",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 6 },
+      "id": 6,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [{ "expr": "sum by (deployment_slot) (rate(grubadmin_http_requests_total{job=\"backend\",deployment_slot=~\"$slot\"}[5m]))", "legendFormat": "{{deployment_slot}}", "refId": "A" }],
+      "title": "Request rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 6 },
+      "id": 7,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "expr": "sum(grubadmin_http_requests_total{job=\"backend\",status_code=~\"2..\",deployment_slot=~\"$slot\"})", "legendFormat": "2xx total", "refId": "A" },
+        { "expr": "sum(grubadmin_http_requests_total{job=\"backend\",status_code=~\"4..\",deployment_slot=~\"$slot\"})", "legendFormat": "4xx total", "refId": "B" },
+        { "expr": "sum(grubadmin_http_requests_total{job=\"backend\",status_code=~\"5..\",deployment_slot=~\"$slot\"})", "legendFormat": "5xx total", "refId": "C" }
+      ],
+      "title": "HTTP response totals",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 13 },
+      "id": 8,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "expr": "sum(rate(grubadmin_http_request_duration_seconds_sum{job=\"backend\",deployment_slot=~\"$slot\"}[5m])) / clamp_min(sum(rate(grubadmin_http_request_duration_seconds_count{job=\"backend\",deployment_slot=~\"$slot\"}[5m])), 0.001)", "legendFormat": "Average", "refId": "A" },
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(grubadmin_http_request_duration_seconds_bucket{job=\"backend\",deployment_slot=~\"$slot\"}[5m])))", "legendFormat": "P95", "refId": "B" },
+        { "expr": "histogram_quantile(0.99, sum by (le) (rate(grubadmin_http_request_duration_seconds_bucket{job=\"backend\",deployment_slot=~\"$slot\"}[5m])))", "legendFormat": "P99", "refId": "C" }
+      ],
+      "title": "API latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 13 },
+      "id": 9,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [{ "expr": "sum by (deployment_slot) (grubadmin_http_active_requests{job=\"backend\",deployment_slot=~\"$slot\"})", "legendFormat": "{{deployment_slot}}", "refId": "A" }],
+      "title": "Active requests",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 20 },
+      "id": 22,
+      "panels": [],
+      "title": "Application Logs",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 21 },
+      "id": 10,
+      "options": { "dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": true, "showCommonLabels": false, "showLabels": true, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
+      "targets": [{ "expr": "{service=\"grubadmin-backend\",environment=\"production\",deployment_slot=~\"$slot\",log_type=~\"$log_type\"} | json | request_id=~\".*$request_id.*\"", "refId": "A" }],
+      "title": "Application logs (filter by slot, type, or request ID)",
+      "type": "logs"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 21 },
+      "id": 11,
+      "options": { "dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": true, "showCommonLabels": false, "showLabels": true, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
+      "targets": [
+        { "expr": "{service=\"grubadmin-backend\",environment=\"production\",deployment_slot=~\"$slot\"} | json | level=\"error\"", "legendFormat": "Error logs", "refId": "A" },
+        { "expr": "{service=\"grubadmin-backend\",environment=\"production\",deployment_slot=~\"$slot\"} | json | status_code=\"500\"", "legendFormat": "HTTP 500 errors", "refId": "B" }
+      ],
+      "title": "Application and HTTP 500 errors",
+      "type": "logs"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 29 },
+      "id": 16,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [{ "expr": "sum by (deployment_slot) (count_over_time({service=\"grubadmin-backend\",environment=\"production\",deployment_slot=~\"$slot\"} | json | level=\"error\" [5m]))", "legendFormat": "{{deployment_slot}} errors / 5m", "refId": "A" }],
+      "title": "Application error trends",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 36 },
+      "id": 23,
+      "panels": [],
+      "title": "Infrastructure",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "percentunit" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 37 },
+      "id": 12,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [{ "expr": "1 - avg by (instance) (rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[5m]))", "legendFormat": "CPU", "refId": "A" }],
+      "title": "EC2 CPU utilization",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "percentunit" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 37 },
+      "id": 13,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "expr": "1 - node_memory_MemAvailable_bytes{job=\"node-exporter\"} / node_memory_MemTotal_bytes{job=\"node-exporter\"}", "legendFormat": "RAM used", "refId": "A" },
+        { "expr": "1 - (node_filesystem_avail_bytes{job=\"node-exporter\",mountpoint=\"/\"} / node_filesystem_size_bytes{job=\"node-exporter\",mountpoint=\"/\"})", "legendFormat": "Root disk used", "refId": "B" }
+      ],
+      "title": "EC2 RAM and root disk utilization",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "Bps" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 44 },
+      "id": 14,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "expr": "rate(node_network_receive_bytes_total{job=\"node-exporter\",device!~\"lo|docker.*|veth.*|br-.*\"}[5m])", "legendFormat": "{{device}} received", "refId": "A" },
+        { "expr": "rate(node_network_transmit_bytes_total{job=\"node-exporter\",device!~\"lo|docker.*|veth.*|br-.*\"}[5m])", "legendFormat": "{{device}} sent", "refId": "B" }
+      ],
+      "title": "EC2 network traffic",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "s" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 44 },
+      "id": 15,
+      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi", "sort": "desc" } },
+      "targets": [
+        { "expr": "node_time_seconds{job=\"node-exporter\"} - node_boot_time_seconds{job=\"node-exporter\"}", "legendFormat": "Host uptime", "refId": "A" },
+        { "expr": "up{job=~\"prometheus|loki|node-exporter|alloy|grafana\"}", "legendFormat": "{{job}} health", "refId": "B" }
+      ],
+      "title": "Host uptime and monitoring service scrape health",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["production", "backend", "grubpac"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "includeAll": true,
+        "multi": true,
+        "name": "slot",
+        "query": "label_values(up{job=\"backend\"}, deployment_slot)",
+        "refresh": 2,
+        "type": "query"
+      },
+      {
+        "current": { "selected": true, "text": "All", "value": ".*" },
+        "includeAll": true,
+        "multi": true,
+        "name": "log_type",
+        "options": [{ "selected": true, "text": "All", "value": ".*" }, { "selected": false, "text": "stdout", "value": "stdout" }, { "selected": false, "text": "stderr", "value": "stderr" }],
+        "query": "stdout,stderr",
+        "type": "custom"
+      },
+      {
+        "current": { "selected": true, "text": "", "value": "" },
+        "label": "Request ID contains",
+        "name": "request_id",
+        "query": "",
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "GrubPac Production Backend Monitoring",
+  "uid": "grubpac-prod-backend",
+  "version": 1,
+  "weekStart": ""
+}

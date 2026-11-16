@@ -8,8 +8,14 @@ import { connectMongoDB, initializeDatabases, isMongoConnected, isPrismaConnecte
 import { globalErrorHandler } from "./middlewares/error";
 import { nullifyEmptyStrings } from "@/utils/clean-query.ts";
 import { randomUUID } from "crypto";
+import {
+	metricsAuthorized,
+	metricsResponse,
+	requestMetricsMiddleware,
+} from "@/utils/metrics";
 
-export const server = new Hono().basePath("/api/v1");
+const api = new Hono().basePath("/api/v1");
+export const server = new Hono();
 
 loadEnv();
 
@@ -29,7 +35,9 @@ let isReady = false;
 // Readiness gate middleware — reject all requests until databases are connected.
 // This eliminates the race condition where requests arrive before the DB is
 // ready, which caused "buffering timed out" errors and 502s.
-server.use("*", async (c, next) => {
+api.use("*", requestMetricsMiddleware);
+
+api.use("*", async (c, next) => {
     const path = c.req.path;
     const method = c.req.method;
 
@@ -63,7 +71,7 @@ server.use("*", async (c, next) => {
     return next();
 });
 
-server.use(
+api.use(
     cors({
         origin: (origin) => {
             if (!origin) {
@@ -114,8 +122,8 @@ server.use(
         credentials: true,
     }),
 );
-server.use(networkLogger);
-server.use("*", async (c, next) => {
+api.use(networkLogger);
+api.use("*", async (c, next) => {
     const originalJson = c.json.bind(c);
     (c as any).json = (data: any, ...args: any[]) => {
         const cleanedData = nullifyEmptyStrings(data);
@@ -125,16 +133,23 @@ server.use("*", async (c, next) => {
 });
 
 // Request ID middleware — attach a unique request_id for structured logging
-server.use("*", async (c, next) => {
+api.use("*", async (c, next) => {
     const requestId = randomUUID();
     (c as any).requestId = requestId;
     c.header("X-Request-Id", requestId);
     await next();
 });
 
-server.onError(globalErrorHandler);
+api.onError(globalErrorHandler);
 
-server.route("/", router);
+api.route("/", router);
+server.get("/metrics", (context) => {
+    if (!metricsAuthorized(context)) {
+        return context.body(null, 404);
+    }
+    return metricsResponse();
+});
+server.route("/", api);
 
 // ── Database Connection Initialization ──────────────────────────────────────
 // Start both database connections and wait for them before marking the

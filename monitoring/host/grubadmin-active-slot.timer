@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh GrubAdmin production active-slot metric
+
+[Timer]
+OnBootSec=15s
+OnUnitActiveSec=15s
+AccuracySec=5s
+Unit=grubadmin-active-slot.service
+
+[Install]
+WantedBy=timers.target
