@@ -1,0 +1,10 @@
+[Unit]
+Description=Export the read-only GrubAdmin active production slot to Node Exporter
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/grubadmin-update-active-slot
+User=root
+Group=root
+UMask=0022

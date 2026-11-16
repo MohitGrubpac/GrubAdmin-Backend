@@ -19,6 +19,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .env*
 !.env.example
 !.env.production.example
+/monitoring/secrets/
 
 # caches
 .eslintcache

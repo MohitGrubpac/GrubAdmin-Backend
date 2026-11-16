@@ -1,6 +1,7 @@
 import { describe, expect, test, beforeEach, afterEach } from "bun:test";
 import { Hono } from "hono";
 import { Prisma } from "@/db/prisma";
+import { logger } from "@/utils/logger";
 import {
 	GENERIC_SERVER_ERROR_MESSAGE,
 	GENERIC_UNAVAILABLE_MESSAGE,
@@ -93,12 +94,16 @@ describe("global error handler — sanitizeClientErrorPayload", () => {
 
 describe("global error handler — integration", () => {
 	let priorNodeEnv: string | undefined;
+	let priorLoggerSilent: boolean;
 
 	beforeEach(() => {
 		priorNodeEnv = process.env.NODE_ENV;
+		priorLoggerSilent = logger.silent;
+		logger.silent = true;
 	});
 
 	afterEach(() => {
+		logger.silent = priorLoggerSilent;
 		if (priorNodeEnv === undefined) {
 			delete process.env.NODE_ENV;
 		} else {
@@ -177,6 +182,17 @@ describe("global error handler — integration", () => {
 });
 
 describe("hospitality error handler — 5xx wrapper", () => {
+	let priorLoggerSilent: boolean;
+
+	beforeEach(() => {
+		priorLoggerSilent = logger.silent;
+		logger.silent = true;
+	});
+
+	afterEach(() => {
+		logger.silent = priorLoggerSilent;
+	});
+
 	test("strips root_cause from hospitality 503 even when shared handler keeps ops code", async () => {
 		process.env.NODE_ENV = "production";
 		const app = new Hono();
